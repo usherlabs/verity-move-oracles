@@ -1,0 +1,7 @@
+[package]
+name = "verity-move-oracles"
+version = "0.0.1"
+
+[dependencies]
+
+[addresses]
