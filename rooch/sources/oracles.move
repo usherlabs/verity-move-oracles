@@ -36,8 +36,7 @@ module verity::oracles {
         request_params: HTTPRequest,
         response_pick: vector<u8>, // An optional JQ string to pick the value from the response JSON data structure.
         oracle: address,
-        recipient: address,
-        notify_method: vector<u8>,
+        recipient: address
     }
 
     struct Pending has key {
@@ -95,7 +94,6 @@ module verity::oracles {
         response_pick: vector<u8>,
         oracle: address,
         recipient: address,
-        notify_method: vector<u8>
     ): u64 {
         let byte_params = bcs::to_bytes(&request_params);
         let bytes = vector::concat(byte_params, vector::concat(response_pick, vector::concat(vector::from_address(oracle), vector::from_address(recipient))));
@@ -107,7 +105,6 @@ module verity::oracles {
             response_pick,
             oracle,
             recipient,
-            notify_method,
         };
         // Store the pending request
         let pending = account::borrow_mut_resource<Pending>(@oracles);
@@ -163,19 +160,12 @@ module verity::oracles {
         let fulfil_object = object::new(fulfil);
         object::transfer(fulfil_object, pending_request.recipient);
 
-        // Add transfer permission that the FulfilRequestObject can be only consumed if the tx signer is the recipient.
+        // TODO: Add permission FulfilObject can be only consumed/destroyed by the recipient.
 
         // Emit fulfil event
         Event::emit_event(&FulfilEvent {
             fulfil,
         });
-
-        if (!vector::is_empty(&pending_request.notify_method)) {
-            // Call the notify method
-            let notify_function = &pending_request.recipient;
-            let function_name = pending_request.notify_method;
-            notify_function::call(function_name);
-        }
     }
 }
 
@@ -220,24 +210,17 @@ module verity::test_oracles {
     }
 
     /// Test function to consume the FulfilRequestObject
-    public fun consume_fulfil_request(id: u64) {
+    public fun fulfil_request(id: u64) {
         let result = vector::empty<u8>();
         let proof = vector::empty<u8>();
 
         oracles::fulfil_request(id, result, proof);
-
-        // Consume the FulfilRequestObject
-        let fulfil_request = account::move_resource_from<FulfilRequestObject>(&recipient);
-        assert!(vector::is_empty(&fulfil_request.result), 1001); // Check if the result is as expected
-
-        // Drop the FulfilRequestObject
-        account::destroy_resource(fulfil_request);
     }
 
     // Test to demonstrate how a third-party contract can use the fulfil request
-    public fun use_fulfil_request(id: u64) {
+    public fun use_fulfil_requests() {
         let recipient = tx_context::sender();
-        let fulfil_objects = account::borrow_all_resources<FulfilRequestObject>(&recipient);
+        let fulfil_objects = account::borrow_all_resources<FulfilRequestObject>(&recipient); // TODO: Does this exist?
 
         let mut i = 0;
         while (i < vector::length(&fulfil_objects)) {
@@ -248,6 +231,8 @@ module verity::test_oracles {
                 fulfil: *fulfil_object,
             });
             i = i + 1;
+
+            account::destroy_resource(fulfil_object); // TODO: Does this exist?
         }
     }
 
@@ -255,5 +240,7 @@ module verity::test_oracles {
     public fun test_consume_fulfil_request() {
         let id = create_oracle_request();
         consume_fulfil_request(id);
+
+        use_fulfil_requests();
     }
 }
