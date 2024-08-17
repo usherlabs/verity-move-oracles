@@ -11,10 +11,10 @@ module verity::oracles {
     use moveos_std::tx_context;
     use moveos_std::signer;
     use moveos_std::account;
+    use moveos_std::object::{Self, Object};
     use std::vector;
     use std::hash;
     use rooch_framework::simple_rng;
-    
 
     struct PendingRequest {
         id: u64, // ID is generated using a SHA3-256 hash of the request parameters, response pick, oracle address, and recipient address.
@@ -49,16 +49,26 @@ module verity::oracles {
     }
 
     fun init() {
-        let signer = signer::module_signer<Pending>();
+        let module_signer = signer::module_signer<Pending>();
         let owner = tx_context::sender();
 
-        account::move_resource_to(&signer, Pending{
+        account::move_resource_to(&module_signer, Pending{
             requests: vector::empty<PendingRequest>(),
         });
-        account::move_resource_to(&signer, GlobalParams{
+        account::move_resource_to(&module_signer, GlobalParams{
             verifier: signer::from_address(@verifierstub),
             owner,
         });
+    }
+
+    public entry fun set_verifier(
+        verifier: address
+    ) {
+        let owner = tx_context::sender();
+        let params = account::borrow_mut_resource<GlobalParams>(@oracles);
+        assert!(params.owner == owner, 1004); // TODO: Create a const for Custom error code if owner is not the owner
+        // TODO: Determine how this plays out if this verifier is a third-party verifier.
+        params.verifier = verifier;
     }
 
     /// Creates a new oracle request for arbitrary API data.
@@ -120,15 +130,21 @@ module verity::oracles {
         assert!(pending_request.oracle == signer_address, 1002); // TODO: Create a const for Custom error code if signer is not the oracle
 
         // Verify the data and proof
-        let verifier = account::borrow_resource<GlobalParams>(@oracles).verifier;
-        assert!(verifier::verify(result, proof), 1003); // TODO: Create a const for Custom error code if proof is not valid
+        let verifier_address = account::borrow_resource<GlobalParams>(@oracles).verifier;
+        let verifier_module = &verifier_address;
+        assert!(verifier_module::verify(result, proof), 1003); // TODO: Create a const for Custom error code if proof is not valid
 
+        // Create FulfilRequestObject and move to the recipient
+        let fulfil_request = object::new(FulfilRequestObject {
+            result,
+        });
+        object::transfer(fulfil_request, pending_request.recipient);
 
-        // (implementation depends on storage strategy)
+        // Add transfer permission that the FulfilRequestObject can be only consumed if the tx signer is the recipient.
+
         // Emit fulfil event
         Event::emit_event(&FulfilRequestEvent {
-            id,
-            result,
+            fulfil_request,
         });
     }
 
@@ -143,5 +159,45 @@ module verity::verifierstub {
     ): bool {
         // ? Eventually this will be replaced with verification of a public key from decentralised verifier network.
         true
+    }
+}
+
+module verity::test_oracles {
+    use moveos_std::account;
+    use moveos_std::event;
+    use moveos_std::tx_context;
+    use std::vector;
+    use verity::oracles;
+    use verity::oracles::FulfilRequestObject;
+
+    /// Test function to consume the FulfilRequestObject
+    public fun consume_fulfil_request() {
+        // Simulate the creation of a fulfil request
+        let request_params = vector::empty<u8>();
+        let response_pick = vector::empty<u8>();
+        let oracle = @0x1;
+        let recipient = tx_context::sender();
+
+        // Create a new request
+        oracles::new_request(request_params, response_pick, oracle, recipient);
+
+        // Simulate fulfilling the request
+        let id = 1; // Assuming the ID is 1 for simplicity
+        let result = vector::empty<u8>();
+        let proof = vector::empty<u8>();
+
+        oracles::fulfil_request(id, result, proof);
+
+        // Consume the FulfilRequestObject
+        let fulfil_request = account::move_resource_from<FulfilRequestObject>(&recipient);
+        assert!(vector::is_empty(&fulfil_request.result), 1001); // Check if the result is as expected
+
+        // Drop the FulfilRequestObject
+        account::destroy_resource(fulfil_request);
+    }
+
+    #[test]
+    public fun test_consume_fulfil_request() {
+        consume_fulfil_request();
     }
 }
