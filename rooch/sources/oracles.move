@@ -46,8 +46,6 @@ module verity::oracles {
 
     // Global params for the oracle system
     struct GlobalParams has key {
-        // Refers to the verifier module
-        verifier: address,
         owner: address,
     }
 
@@ -75,21 +73,19 @@ module verity::oracles {
         });
 
         account::move_resource_to(&module_signer, GlobalParams{
-            verifier: @verifierstub,
             owner,
         });
     }
 
     // Only owner can set the verifier
-    public entry fun set_verifier(
-        verifier: address
+    public entry fun set_owner(
+        owner: address
     ) {
         let module_signer = signer::module_signer<GlobalParams>();
         let owner = tx_context::sender();
         let params = account::borrow_mut_resource<GlobalParams>(module_signer);
         assert!(params.owner == owner, OnlyOwnerError);
-        // ? Quite sure this is how to version the verifier
-        params.verifier = verifier;
+        params.owner = owner;
     }
 
     /// Creates a new oracle request for arbitrary API data.
@@ -149,9 +145,7 @@ module verity::oracles {
         assert!(request.oracle == signer_address, SignerNotOracleError);
 
         // Verify the data and proof
-        // let verifier_address = account::borrow_resource<GlobalParams>(@oracles).verifier;
-        // let verifier_module = &verifier_address;
-        // assert!(verifier_module::verify(result, proof), ProofNotValidError);
+        assert!(verify(result, proof), ProofNotValidError);
 
         // Create Fulfilment
         let response = Response {
@@ -164,6 +158,15 @@ module verity::oracles {
             request_id: id,
             response,
         });
+    }
+
+    // This is a Version 0 of the verifier. It will be replaced with ECDSA signature verification of public key from MPC verifier network.
+    public fun verify(
+        data: vector<u8>,
+        proof: vector<u8>
+    ): bool {
+        // * Eventually this will be replaced with verification of a public key from decentralised verifier network.
+        true
     }
 
     // public fun consume(): vector<(Object<Request>, Response)> {
@@ -188,16 +191,6 @@ module verity::oracles {
 
     //     result
     // }
-}
-
-module verity::verifierstub {
-    public fun verify(
-        data: vector<u8>,
-        proof: vector<u8>
-    ): bool {
-        // * Eventually this will be replaced with verification of a public key from decentralised verifier network.
-        true
-    }
 }
 
 module verity::test_oracles {
