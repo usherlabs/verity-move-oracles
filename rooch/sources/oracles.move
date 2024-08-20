@@ -13,8 +13,6 @@ module verity::oracles {
     use moveos_std::account;
     use moveos_std::object::{Self, Object, ObjectID};
     use std::vector;
-    use std::hash;
-    use rooch_framework::simple_rng;
     use moveos_std::table::{Self, Table};
 
     const RequestNotFoundError: u64 = 1001;
