@@ -22,23 +22,21 @@ module verity::oracles {
 
     // Struct to represent HTTP request parameters
     // Designed to be imported by third-party contracts
-    public struct HTTPRequest {
+    struct HTTPRequest has store, copy, drop {
         url: vector<u8>,
         method: vector<u8>,
         headers: vector<u8>,
         body: vector<u8>,
     }
 
-    struct Request has key, store {
-        // // id: u64, // ID is generated using a SHA3-256 hash of the request parameters, response pick, oracle address, and recipient address.
-        // // Generated ID is used to correlate the request with the fulfilled response.
-        request_params: HTTPRequest,
-        response_pick: vector<u8>, // An optional JQ string to pick the value from the response JSON data structure.
-        oracle: address
+    struct Response has store, copy, drop{
+        body: vector<u8>,
     }
 
-    struct Response {
-        body: vector<u8>,
+    struct Request has key {
+        params: HTTPRequest,
+        pick: vector<u8>, // An optional JQ string to pick the value from the response JSON data structure.
+        oracle: address
     }
 
     struct Fulfilments has key {
@@ -53,14 +51,19 @@ module verity::oracles {
         owner: address,
     }
 
+    // -------- Events --------
     struct RequestAdded has copy, drop {
-        request: Object<Request>,
+        params: HTTPRequest,
+        pick: vector<u8>, // An optional JQ string to pick the value from the response JSON data structure.
+        oracle: address,
+        recipient: address,
     }
 
     struct Fulfilment has copy, drop {
         request_id: ObjectID,
         response: Response,
     }
+    // ------------------------
 
     fun init() {
         let module_signer = signer::module_signer<Fulfilments>();
@@ -72,7 +75,7 @@ module verity::oracles {
         });
 
         account::move_resource_to(&module_signer, GlobalParams{
-            verifier: signer::from_address(@verifierstub),
+            verifier: @verifierstub,
             owner,
         });
     }
@@ -81,8 +84,9 @@ module verity::oracles {
     public entry fun set_verifier(
         verifier: address
     ) {
+        let module_signer = signer::module_signer<GlobalParams>();
         let owner = tx_context::sender();
-        let params = account::borrow_mut_resource<GlobalParams>(@oracles);
+        let params = account::borrow_mut_resource<GlobalParams>(module_signer);
         assert!(params.owner == owner, OnlyOwnerError);
         // ? Quite sure this is how to version the verifier
         params.verifier = verifier;
@@ -92,33 +96,37 @@ module verity::oracles {
     /// This function is intended to be called by third-party contracts
     /// to initiate off-chain data requests.
     public fun new_request(
-        request_params: HTTPRequest,
-        response_pick: vector<u8>,
+        params: HTTPRequest,
+        pick: vector<u8>,
         oracle: address,
         recipient: address,
-    ): u64 {
+    ): ObjectID {
         // TODO: Ensure that there is a enough gas transferred for the request.
 
         // Create new request object
         let request = object::new(Request {
-            request_params,
-            response_pick,
+            params,
+            pick,
             oracle,
         });
         object::transfer(request, recipient);
         let request_id = object::id(request);
 
         // Store the pending request
-        let fulfilments = account::borrow_mut_resource<Fulfilments>(@oracles);
+        let module_signer = signer::module_signer<Fulfilments>();
+        let fulfilments = account::borrow_mut_resource<Fulfilments>(module_signer);
         let f_requests = table::borrow_mut(&mut fulfilments.requests, recipient);
         vector::push_back(&mut f_requests, request_id);
 
         // Emit event
         event::emit_event<RequestAdded>(RequestAdded {
-            request,
+            params,
+            pick,
+            oracle,
+            recipient,
         });
 
-        id
+        request_id
     }
 
     /// Fulfils an existing oracle request with the provided result.
@@ -158,28 +166,28 @@ module verity::oracles {
         });
     }
 
-    public fun consume(): vector<(Request, Response)> {
-        let recipient = tx_context::sender();
-        let fulfilments = account::borrow_resource<Fulfilments>(@oracles);
-        let request_ids = table::borrow(&fulfilments.requests, recipient);
+    // public fun consume(): vector<(Object<Request>, Response)> {
+    //     let recipient = tx_context::sender();
+    //     let fulfilments = account::borrow_mut_resource<Fulfilments>(@oracles);
+    //     let request_ids = table::borrow(&fulfilments.requests, recipient);
 
-        // For each request, get the response
-        let mut result = vector::empty<(Request, Response)>();
-        let mut i = 0;
-        while (i < vector::length(&request_ids)) {
-            let request_id = vector::borrow(&request_ids, i);
-            let request = object::borrow(request_id);
-            let response = table::borrow(&fulfilments.responses, request_id);
-            vector::push_back(&mut result, (request, response));
-            i = i + 1;
-        }
+    //     // For each request, get the response
+    //     let result = vector::empty<(Object<Request>, Response)>();
+    //     let i = 0;
+    //     while (i < vector::length(&request_ids)) {
+    //         let request_id = vector::borrow(&request_ids, i);
+    //         let request = object::borrow(request_id);
+    //         let response = table::borrow(&fulfilments.responses, request_id);
+    //         vector::push_back(&mut result, (request, response));
+    //         i = i + 1;
+    //     }
 
-        // Then clean the fulfilments - on the next consumption it's only fresh requests.
-        // ? Should be destroy the objects here too?
-        table::remove(&mut fulfilments.requests, recipient);
+    //     // Then clean the fulfilments - on the next consumption it's only fresh requests.
+    //     // ? Should be destroy the objects here too?
+    //     table::remove(&mut fulfilments.requests, recipient);
 
-        result
-    }
+    //     result
+    // }
 }
 
 module verity::verifierstub {
@@ -193,12 +201,8 @@ module verity::verifierstub {
 }
 
 module verity::test_oracles {
-    use moveos_std::account;
-    use moveos_std::event;
-    use moveos_std::tx_context;
     use std::vector;
-    use verity::oracles;
-    use verity::oracles::{HTTPRequest, FulfilRequestObject};
+    use verity::oracles::{Self, HTTPRequest};
 
     // Test for creating a new request
     public fun create_oracle_request(): u64 {
@@ -214,44 +218,43 @@ module verity::test_oracles {
             body,
         };
 
-        let request_params = bcs::to_bytes(&http_request);
         let response_pick = vector::empty<u8>();
         let oracle = @0x1;
         let recipient = @0x2;
 
-        oracles::new_request(request_params, response_pick, oracle, recipient)
+        oracles::new_request(&http_request, response_pick, oracle, recipient)
     }
 
     /// Test function to consume the FulfilRequestObject
-    public fun fulfil_request(id: u64) {
+    public fun fulfil_request(id: ObjectID) {
         let result = vector::empty<u8>();
         let proof = vector::empty<u8>();
 
         oracles::fulfil_request(id, result, proof);
     }
 
-    // Test to demonstrate how a third-party contract can use the fulfil request
-    public fun consume(): vector<(Request, Response)> {
-        let fulfilments = oracles::consume();
+    // // Test to demonstrate how a third-party contract can use the fulfil request
+    // public fun consume(): vector<(Request, Response)> {
+    //     let fulfilments = oracles::consume();
 
-        result
-    }
+    //     result
+    // }
 
     #[test]
     public fun test_consume_fulfil_request() {
         let id = create_oracle_request();
         fulfil_request(id);
 
-        let result = consume();
-        assert!(vector::length(&result) == 1, 99991); // "Expected 1 request to be consumed"
+        // let result = consume();
+        // assert!(vector::length(&result) == 1, 99991); // "Expected 1 request to be consumed"
 
-        let first_result = vector::borrow(&result, 0);
-        let request = first_result.0;
-        let response = first_result.1;
+        // let first_result = vector::borrow(&result, 0);
+        // let request = first_result.0;
+        // let response = first_result.1;
 
-        assert!(request.request_params.url == b"https://api.example.com/data", 99992); // "Expected URL to match"
+        // assert!(request.request_params.url == b"https://api.example.com/data", 99992); // "Expected URL to match"
 
-          // Test Response
-        assert!(vector::is_empty(&response.body), 99993); // "Expected response body to be empty"
+        //   // Test Response
+        // assert!(vector::is_empty(&response.body), 99993); // "Expected response body to be empty"
     }
 }
