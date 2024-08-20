@@ -13,6 +13,7 @@ module verity::oracles {
     use moveos_std::account;
     use moveos_std::object::{Self, Object, ObjectID};
     use std::vector;
+    use std::string::String;
     use moveos_std::table::{Self, Table};
 
     const RequestNotFoundError: u64 = 1001;
@@ -23,19 +24,19 @@ module verity::oracles {
     // Struct to represent HTTP request parameters
     // Designed to be imported by third-party contracts
     struct HTTPRequest has store, copy, drop {
-        url: vector<u8>,
-        method: vector<u8>,
-        headers: vector<u8>,
-        body: vector<u8>,
+        url: String,
+        method: String,
+        headers: String,
+        body: String,
     }
 
     struct Response has store, copy, drop{
-        body: vector<u8>,
+        body: String,
     }
 
-    struct Request has key {
+    struct Request has key, store {
         params: HTTPRequest,
-        pick: vector<u8>, // An optional JQ string to pick the value from the response JSON data structure.
+        pick: String, // An optional JQ string to pick the value from the response JSON data structure.
         oracle: address
     }
 
@@ -52,7 +53,7 @@ module verity::oracles {
     // -------- Events --------
     struct RequestAdded has copy, drop {
         params: HTTPRequest,
-        pick: vector<u8>, // An optional JQ string to pick the value from the response JSON data structure.
+        pick: String, // An optional JQ string to pick the value from the response JSON data structure.
         oracle: address,
         recipient: address,
     }
@@ -81,11 +82,25 @@ module verity::oracles {
     public entry fun set_owner(
         owner: address
     ) {
-        let module_signer = signer::module_signer<GlobalParams>();
         let owner = tx_context::sender();
-        let params = account::borrow_mut_resource<GlobalParams>(module_signer);
+        let params = account::borrow_mut_resource<GlobalParams>(@verity);
         assert!(params.owner == owner, OnlyOwnerError);
         params.owner = owner;
+    }
+
+    // Builds a request object from the provided parameters
+    public fun build_request(
+        url: String,
+        method: String,
+        headers: String,
+        body: String
+    ): HTTPRequest {
+        HTTPRequest {
+            url,
+            method,
+            headers,
+            body,
+        }
     }
 
     /// Creates a new oracle request for arbitrary API data.
@@ -93,7 +108,7 @@ module verity::oracles {
     /// to initiate off-chain data requests.
     public fun new_request(
         params: HTTPRequest,
-        pick: vector<u8>,
+        pick: String,
         oracle: address,
         recipient: address,
     ): ObjectID {
@@ -105,17 +120,16 @@ module verity::oracles {
             pick,
             oracle,
         });
+        let request_id = object::id(&request);
         object::transfer(request, recipient);
-        let request_id = object::id(request);
 
         // Store the pending request
-        let module_signer = signer::module_signer<Fulfilments>();
-        let fulfilments = account::borrow_mut_resource<Fulfilments>(module_signer);
+        let fulfilments = account::borrow_mut_resource<Fulfilments>(@verity);
         let f_requests = table::borrow_mut(&mut fulfilments.requests, recipient);
-        vector::push_back(&mut f_requests, request_id);
+        vector::push_back(f_requests, request_id);
 
         // Emit event
-        event::emit_event<RequestAdded>(RequestAdded {
+        event::emit(RequestAdded {
             params,
             pick,
             oracle,
@@ -130,18 +144,19 @@ module verity::oracles {
     /// to fulfill requests initiated by third-party contracts.
     public entry fun fulfil_request(
         id: ObjectID,
-        result: vector<u8>,
-        proof: vector<u8>
+        result: String,
+        proof: String
     ) {
         let signer_address = tx_context::sender();
-        let fulfilments = account::borrow_mut_resource<Fulfilments>(@oracles);
+        let fulfilments = account::borrow_mut_resource<Fulfilments>(@verity);
 
-        assert!(object::exists_object(id), RequestNotFoundError);
+        assert!(object::exists_object_with_type<Request>(id), RequestNotFoundError);
 
-        let request = object::borrow(id);
-        assert!(table::contains(&fulfilments.requests, object::owner(request)), RequestNotFoundError);
+        let request_ref = object::borrow_object<Request>(id);
+        assert!(table::contains(&fulfilments.requests, object::owner(request_ref)), RequestNotFoundError);
 
         // Verify the signer matches the pending request's signer/oracle
+        let request = object::borrow(request_ref);
         assert!(request.oracle == signer_address, SignerNotOracleError);
 
         // Verify the data and proof
@@ -151,21 +166,21 @@ module verity::oracles {
         let response = Response {
             body: result,
         };
-        table::insert(&mut fulfilments.responses, id, response);
+        table::add(&mut fulfilments.responses, id, response);
 
         // Emit fulfil event
-        event::emit_event<Fulfilment>(Fulfilment {
+        event::emit(Fulfilment {
             request_id: id,
             response,
         });
     }
 
-    // This is a Version 0 of the verifier. It will be replaced with ECDSA signature verification of public key from MPC verifier network.
+    // This is a Version 0 of the verifier.
     public fun verify(
-        data: vector<u8>,
-        proof: vector<u8>
+        data: String,
+        proof: String
     ): bool {
-        // * Eventually this will be replaced with verification of a public key from decentralised verifier network.
+        // * Eventually this will be replaced with ECDSA signature verification of public key from MPC verifier network.
         true
     }
 
@@ -195,33 +210,30 @@ module verity::oracles {
 
 module verity::test_oracles {
     use std::vector;
-    use verity::oracles::{Self, HTTPRequest};
+    use std::string;
+    use verity::oracles;
+    use moveos_std::object::{ObjectID};
 
     // Test for creating a new request
-    public fun create_oracle_request(): u64 {
-        let url = vector::from_utf8(b"https://api.example.com/data");
-        let method = vector::from_utf8(b"GET");
-        let headers = vector::from_utf8(b"Content-Type: application/json\nUser-Agent: MoveClient/1.0");
-        let body = vector::empty<u8>();
+    public fun create_oracle_request(): ObjectID {
+        let url = string::utf8(b"https://api.example.com/data");
+        let method = string::utf8(b"GET");
+        let headers = string::utf8(b"Content-Type: application/json\nUser-Agent: MoveClient/1.0");
+        let body = string::utf8(b"");
 
-        let http_request = HTTPRequest {
-            url,
-            method,
-            headers,
-            body,
-        };
+        let http_request = oracles::build_request(url, method, headers, body);
 
-        let response_pick = vector::empty<u8>();
-        let oracle = @0x1;
-        let recipient = @0x2;
+        let response_pick = string::utf8(b"");
+        let oracle = @0x45;
+        let recipient = @0x46;
 
-        oracles::new_request(&http_request, response_pick, oracle, recipient)
+        oracles::new_request(http_request, response_pick, oracle, recipient)
     }
 
     /// Test function to consume the FulfilRequestObject
     public fun fulfil_request(id: ObjectID) {
-        let result = vector::empty<u8>();
-        let proof = vector::empty<u8>();
+        let result = string::utf8(b"");
+        let proof = string::utf8(b"");
 
         oracles::fulfil_request(id, result, proof);
     }
