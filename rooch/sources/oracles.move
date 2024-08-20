@@ -44,8 +44,8 @@ module verity::oracles {
     }
 
     struct Fulfilments has key {
-        requests: Table<address, vector<ObjectID>>,
-        responses: Table<ObjectID, Response>,
+        requests: Table<address, vector<ObjectID>>, // Recipient -> Request IDs
+        responses: Table<ObjectID, Response>, // Request ID -> Response
     }
 
     // Global params for the oracle system
