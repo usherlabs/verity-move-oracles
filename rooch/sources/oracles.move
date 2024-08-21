@@ -219,7 +219,7 @@ module verity::oracles {
         request.params.body
     }
 
-    public fun get_response(id: ObjectID): String {
+    public fun get_response(id: ObjectID): Option<String> {
         let request = borrow_request(id);
         request.response
     }
@@ -228,8 +228,11 @@ module verity::oracles {
 module verity::test_oracles {
     use std::vector;
     use std::string;
+    use moveos_std::signer;
     use verity::oracles::{Self, Request};
     use moveos_std::object::{Self, ObjectID};
+
+    struct Test has key {}
 
     // Test for creating a new request
     public fun create_oracle_request(): ObjectID {
@@ -252,8 +255,10 @@ module verity::test_oracles {
         let result = string::utf8(b"Hello World");
         // let proof = string::utf8(b"");
 
+        let sig = signer::module_signer<Test>();
+
         // oracles::fulfil_request(id, result, proof);
-        oracles::fulfil_request(id, result);
+        oracles::fulfil_request(&sig, id, result);
     }
 
     #[test]
@@ -271,6 +276,6 @@ module verity::test_oracles {
 
         fulfil_request(id);
 
-        assert!(oracles::get_response(id) == string::utf8(b"Hello World"), 99958);
+        assert!(oracles::get_response(id) == option::some(string::utf8(b"Hello World")), 99958);
     }
 }
