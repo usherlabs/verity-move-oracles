@@ -6,14 +6,7 @@
   "engines": {
     "node": ">=18"
   },
-  "keywords": [
-    "web3",
-    "crypto",
-    "blockchain",
-    "move",
-    "verity",
-    "smart-contracts"
-  ],
+  "keywords": ["web3", "crypto", "blockchain", "move", "verity", "smart-contracts"],
   "author": "Ryan Soury <labs@usher.so>",
   "license": "LGPL-2.1",
   "bugs": {
@@ -29,13 +22,17 @@
     "clean": "del dist",
     "prepare": "husky",
     "format": "biome format src/ --fix",
-    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org usherlabs --project verity-move-oracles ./dist && sentry-cli sourcemaps upload --org usherlabs --project verity-move-oracles ./dist"
+    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org usherlabs --project verity-move-oracles ./dist && sentry-cli sourcemaps upload --org usherlabs --project verity-move-oracles ./dist",
+    "test": "jest --runInBand "
   },
   "devDependencies": {
     "@biomejs/biome": "^1.8.3",
     "@sentry/cli": "^2.33.1",
+    "@types/jest": "^29.5.12",
+    "@types/mocha": "^10.0.7",
     "@types/node": "^22.4.2",
     "husky": "^9.1.5",
+    "jest": "^29.7.0",
     "lint-staged": "^15.2.9",
     "tsup": "^8.2.4",
     "typescript": "^5.5.4"
@@ -47,17 +44,14 @@
     "axios": "^1.7.4",
     "cron": "^3.1.7",
     "dotenv": "^16.4.5",
+    "joi": "^17.13.3",
     "tslog": "^4.9.3"
   },
   "lint-staged": {
-    "*.{js,ts,cjs,mjs,d.cts,d.mts,json,jsonc}": [
-      "biome check --apply --no-errors-on-unmatched"
-    ]
+    "*.{js,ts,cjs,mjs,d.cts,d.mts,json,jsonc}": ["biome check --apply --no-errors-on-unmatched"]
   },
   "tsup": {
-    "entry": [
-      "./orchestrator/src"
-    ],
+    "entry": ["./orchestrator/src"],
     "splitting": false,
     "sourcemap": true,
     "clean": true
