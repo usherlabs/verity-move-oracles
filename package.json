@@ -29,7 +29,7 @@
     "clean": "del dist",
     "prepare": "husky",
     "format": "biome format src/ --fix",
-    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org usherlabs --project usher-games ./dist && sentry-cli sourcemaps upload --org usherlabs --project usher-games ./dist"
+    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org usherlabs --project verity-move-oracles ./dist && sentry-cli sourcemaps upload --org usherlabs --project verity-move-oracles ./dist"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.8.3",
