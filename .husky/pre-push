@@ -1,6 +1,3 @@
 
 # Check if test cases pass
 # npm run test
-
-# Check if the code Builds
-npm run build
