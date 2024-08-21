@@ -8,4 +8,4 @@ The first Oracle supported is an Oracle for X (Twitter) data.
 
 - [x] [Rooch Network](https://rooch.network/)
 - [ ] [Aptos](https://aptosfoundation.org/)
-~- [ ] Sui~
+- [ ] ~Sui~
