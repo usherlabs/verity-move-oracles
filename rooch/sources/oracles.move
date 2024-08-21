@@ -45,6 +45,11 @@ module verity::oracles {
         responses: Table<ObjectID, Response>, // Request ID -> Response
     }
 
+    struct ConsumeFulfilment {
+        request: Object<Request>,
+        response: Response,
+    }
+
     // Global params for the oracle system
     struct GlobalParams has key {
         owner: address,
@@ -185,28 +190,52 @@ module verity::oracles {
     //     true
     // }
 
-    // public fun consume(): vector<(Object<Request>, Response)> {
-    //     let recipient = tx_context::sender();
-    //     let fulfilments = account::borrow_mut_resource<Fulfilments>(@oracles);
-    //     let request_ids = table::borrow(&fulfilments.requests, recipient);
+    // Consumes all the fulfilled requests for the recipient, returns them, and clears the fulfilled requests for the recipient.
+    fun consume_for_recipient(recipient: address): vector<ConsumeFulfilment> {
+        let fulfilments = account::borrow_mut_resource<Fulfilments>(@verity);
+        // let request_ids = table::borrow(&fulfilments.requests, recipient);
+        let request_ids = table::remove(&mut fulfilments.requests, recipient);
 
-    //     // For each request, get the response
-    //     let result = vector::empty<(Object<Request>, Response)>();
-    //     let i = 0;
-    //     while (i < vector::length(&request_ids)) {
-    //         let request_id = vector::borrow(&request_ids, i);
-    //         let request = object::borrow(request_id);
-    //         let response = table::borrow(&fulfilments.responses, request_id);
-    //         vector::push_back(&mut result, (request, response));
-    //         i = i + 1;
-    //     }
+        // For each request, get the response
+        let result = vector::empty<ConsumeFulfilment>();
+        let i = 0;
+        while (i < vector::length(&request_ids)) {
+            let request_id = vector::borrow(&request_ids, i);
+            let request_ref = object::borrow_object<Request>(request_id);
+            let request = object::borrow(request_ref);
 
-    //     // Then clean the fulfilments - on the next consumption it's only fresh requests.
-    //     // ? Should be destroy the objects here too?
-    //     table::remove(&mut fulfilments.requests, recipient);
+            let response = table::borrow(&fulfilments.responses, request_id);
+            vector::push_back(&mut result, ConsumeFulfilment {
+                request,
+                response,
+            });
+            i = i + 1;
+        };
 
-    //     result
-    // }
+        result
+    }
+
+    public fun consume(): vector<ConsumeFulfilment> {
+        // Enforce that recipient is the caller of the function -- ie. The third-party contract that has integrated this module.
+        let recipient = tx_context::sender();
+
+        consume_for_recipient(recipient)
+    }
+
+    #[test_only]
+    public fun consume_in_test(recipient: address):  vector<ConsumeFulfilment> {
+        consume_for_recipient(recipient)
+    }
+
+    #[test_only]
+    public fun get_consume_fulfilment_request(cf: &ConsumeFulfilment): &Object<Request> {
+        &cf.request
+    }
+
+    #[test_only]
+    public fun get_consume_fulfilment_response(cf: &ConsumeFulfilment): &Response {
+        &cf.response
+    }
 
     #[test_only]
     public fun get_request_oracle(request: &Request): address {
@@ -283,13 +312,6 @@ module verity::test_oracles {
         oracles::fulfil_request(id, result, proof);
     }
 
-    // // Test to demonstrate how a third-party contract can use the fulfil request
-    // public fun consume(): vector<(Request, Response)> {
-    //     let fulfilments = oracles::consume();
-
-    //     result
-    // }
-
     #[test]
     public fun test_consume_fulfil_request() {
         let id = create_oracle_request();
@@ -314,16 +336,20 @@ module verity::test_oracles {
         let f_response = oracles::get_response_for_request(id);
         assert!(oracles::get_response_body(f_response) == string::utf8(b"Hello World"), 99957);
 
-        // let result = consume();
-        // assert!(vector::length(&result) == 1, 99991); // "Expected 1 request to be consumed"
+        let base_result = oracles::consume();
+        assert!(vector::length(&base_result) == 0, 99958); // should be empty as recipient is tx sender.
 
-        // let first_result = vector::borrow(&result, 0);
-        // let request = first_result.0;
-        // let response = first_result.1;
+        let result = oracles::consume_in_test(@0x46);
 
-        // assert!(request.request_params.url == b"https://api.example.com/data", 99992); // "Expected URL to match"
+        assert!(vector::length(&result) == 1, 99961); // "Expected 1 request to be consumed"
 
-        //   // Test Response
-        // assert!(vector::is_empty(&response.body), 99993); // "Expected response body to be empty"
+        let first_result = vector::borrow(&result, 0);
+        let res_request = oracles::get_consume_fulfilment_request(first_result);
+        let res_response = oracles::get_consume_fulfilment_response(first_result);
+
+        assert!(oracles::get_request_params_url(res_request) == string::utf8(b"https://api.example.com/data"), 99962); // "Expected URL to match"
+
+          // Test Response
+        assert!(oracles::get_response_body(res_response) == string::utf8(b"Hello World"), 99963); // "Expected response body to be empty"
     }
 }
