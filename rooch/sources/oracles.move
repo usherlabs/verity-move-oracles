@@ -34,7 +34,7 @@ module verity::oracles {
         body: String,
     }
 
-    struct Request has key, store {
+    struct Request has key, store, copy {
         params: HTTPRequest,
         pick: String, // An optional JQ string to pick the value from the response JSON data structure.
         oracle: address
@@ -45,8 +45,8 @@ module verity::oracles {
         responses: Table<ObjectID, Response>, // Request ID -> Response
     }
 
-    struct ConsumeFulfilment {
-        request: Object<Request>,
+    struct RequestResponsePair {
+        request: Request,
         response: Response,
     }
 
@@ -191,23 +191,23 @@ module verity::oracles {
     // }
 
     // Consumes all the fulfilled requests for the recipient, returns them, and clears the fulfilled requests for the recipient.
-    fun consume_for_recipient(recipient: address): vector<ConsumeFulfilment> {
+    fun consume_for_recipient(recipient: address): vector<RequestResponsePair> {
         let fulfilments = account::borrow_mut_resource<Fulfilments>(@verity);
         // let request_ids = table::borrow(&fulfilments.requests, recipient);
         let request_ids = table::remove(&mut fulfilments.requests, recipient);
 
         // For each request, get the response
-        let result = vector::empty<ConsumeFulfilment>();
+        let result = vector::empty<RequestResponsePair>();
         let i = 0;
         while (i < vector::length(&request_ids)) {
             let request_id = vector::borrow(&request_ids, i);
-            let request_ref = object::borrow_object<Request>(request_id);
+            let request_ref = object::borrow_object<Request>(*request_id);
             let request = object::borrow(request_ref);
 
-            let response = table::borrow(&fulfilments.responses, request_id);
-            vector::push_back(&mut result, ConsumeFulfilment {
-                request,
-                response,
+            let response = table::borrow(&fulfilments.responses, *request_id);
+            vector::push_back(&mut result, RequestResponsePair {
+                request: *request,
+                response: *response,
             });
             i = i + 1;
         };
@@ -215,7 +215,7 @@ module verity::oracles {
         result
     }
 
-    public fun consume(): vector<ConsumeFulfilment> {
+    public fun consume(): vector<RequestResponsePair> {
         // Enforce that recipient is the caller of the function -- ie. The third-party contract that has integrated this module.
         let recipient = tx_context::sender();
 
@@ -223,17 +223,17 @@ module verity::oracles {
     }
 
     #[test_only]
-    public fun consume_in_test(recipient: address):  vector<ConsumeFulfilment> {
+    public fun consume_in_test(recipient: address):  vector<RequestResponsePair> {
         consume_for_recipient(recipient)
     }
 
     #[test_only]
-    public fun get_consume_fulfilment_request(cf: &ConsumeFulfilment): &Object<Request> {
+    public fun get_request_from_pair(cf: &RequestResponsePair): &Request {
         &cf.request
     }
 
     #[test_only]
-    public fun get_consume_fulfilment_response(cf: &ConsumeFulfilment): &Response {
+    public fun get_response_from_pair(cf: &RequestResponsePair): &Response {
         &cf.response
     }
 
@@ -344,8 +344,8 @@ module verity::test_oracles {
         assert!(vector::length(&result) == 1, 99961); // "Expected 1 request to be consumed"
 
         let first_result = vector::borrow(&result, 0);
-        let res_request = oracles::get_consume_fulfilment_request(first_result);
-        let res_response = oracles::get_consume_fulfilment_response(first_result);
+        let res_request = oracles::get_request_from_pair(first_result);
+        let res_response = oracles::get_response_from_pair(first_result);
 
         assert!(oracles::get_request_params_url(res_request) == string::utf8(b"https://api.example.com/data"), 99962); // "Expected URL to match"
 
