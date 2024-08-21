@@ -34,7 +34,7 @@ module verity::oracles {
         body: String,
     }
 
-    struct Request has key, store, copy {
+    struct Request has key, store, copy, drop {
         params: HTTPRequest,
         pick: String, // An optional JQ string to pick the value from the response JSON data structure.
         oracle: address
@@ -45,7 +45,7 @@ module verity::oracles {
         responses: Table<ObjectID, Response>, // Request ID -> Response
     }
 
-    struct RequestResponsePair {
+    struct RequestResponsePair has drop {
         request: Request,
         response: Response,
     }
@@ -150,8 +150,8 @@ module verity::oracles {
     /// to fulfill requests initiated by third-party contracts.
     public entry fun fulfil_request(
         id: ObjectID,
-        result: String,
-        proof: String
+        result: String
+        // proof: String
     ) {
         let signer_address = tx_context::sender();
         let fulfilments = account::borrow_mut_resource<Fulfilments>(@verity);
@@ -283,10 +283,8 @@ module verity::oracles {
 module verity::test_oracles {
     use std::vector;
     use std::string;
-    use verity::oracles::{Self, Request, Fulfilments};
+    use verity::oracles::{Self, Request};
     use moveos_std::object::{Self, ObjectID};
-    use moveos_std::table;
-    use moveos_std::account;
 
     // Test for creating a new request
     public fun create_oracle_request(): ObjectID {
@@ -307,9 +305,10 @@ module verity::test_oracles {
     /// Test function to consume the FulfilRequestObject
     public fun fulfil_request(id: ObjectID) {
         let result = string::utf8(b"Hello World");
-        let proof = string::utf8(b"");
+        // let proof = string::utf8(b"");
 
-        oracles::fulfil_request(id, result, proof);
+        // oracles::fulfil_request(id, result, proof);
+        oracles::fulfil_request(id, result);
     }
 
     #[test]
