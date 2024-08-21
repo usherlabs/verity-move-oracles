@@ -1,0 +1,61 @@
+{
+  "name": "verity-move-oracles",
+  "version": "0.0.1",
+  "description": "An Oracle Network for sourcing and verifying data from restricted APIs on Move oriented blockchains.",
+  "main": "./orchestrator/build/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "web3",
+    "crypto",
+    "blockchain",
+    "move",
+    "verity",
+    "smart-contracts"
+  ],
+  "author": "Ryan Soury <labs@usher.so>",
+  "license": "LGPL-2.1",
+  "bugs": {
+    "url": "https://github.com/usherlabs/verity-move-oracles/issues"
+  },
+  "homepage": "https://github.com/usherlabs/verity-move-oracles#readme",
+  "scripts": {
+    "dev": "tsup --watch --onSuccess 'node dist/index.js'",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "lint": "biome check src/",
+    "lint:fix": "biome check src/ --fix",
+    "clean": "del dist",
+    "prepare": "husky",
+    "format": "biome format src/ --fix",
+    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org usherlabs --project usher-games ./dist && sentry-cli sourcemaps upload --org usherlabs --project usher-games ./dist"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.8.3",
+    "@sentry/cli": "^2.33.1",
+    "@types/node": "^22.4.2",
+    "husky": "^9.1.5",
+    "lint-staged": "^15.2.9",
+    "tsup": "^8.2.4",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@sentry/node": "^8.26.0",
+    "@sentry/profiling-node": "^8.26.0",
+    "dotenv": "^16.4.5"
+  },
+  "lint-staged": {
+    "*.{js,ts,cjs,mjs,d.cts,d.mts,json,jsonc}": [
+      "biome check --apply --no-errors-on-unmatched"
+    ]
+  },
+  "tsup": {
+    "entry": [
+      "./orchestrator/src"
+    ],
+    "splitting": false,
+    "sourcemap": true,
+    "clean": true
+  }
+}
