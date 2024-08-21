@@ -1,0 +1,59 @@
+{
+  "name": "Offchain-oracle",
+  "version": "1.0.0",
+  "description": "OffChain-oracle",
+  "author": "xlassix(Oki Ayobami)",
+  "license": "MIT",
+  "scripts": {
+    "dev": "nodemon --exec ts-node offChain-oracle/index.ts",
+    "start": "node dist/index.js",
+    "build": "npx tsc",
+    "lint": "eslint . --ext .ts",
+    "lint-basic": "tslint -p tsconfig.json",
+    "test": "jest --runInBand ",
+    "prepare": "husky"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.9.0",
+    "eslint": "^9.9.0",
+    "eslint-plugin-jest": "^28.8.0",
+    "eslint-prettier": "^0.0.0-empty",
+    "husky": "^9.1.5",
+    "jiti": "^1.21.6",
+    "lint-staged": "^15.2.9",
+    "nodemon": "^3.1.4",
+    "prettier": "^3.3.3",
+    "staged": "^0.0.0",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@roochnetwork/rooch-sdk": "^0.2.3"
+  },
+  "lint-staged": {
+    "offChain-oracle/**/*.ts": [
+      "npx eslint",
+      "prettier --single-quote --write"
+    ],
+    "offChain-oracle/*.ts": [
+      "npx eslint",
+      "prettier --single-quote --write"
+    ],
+    "**/*.ts": "eslint"
+  },
+  "eslintConfig": {
+    "extends": [
+      "prettier"
+    ]
+  }
+}
