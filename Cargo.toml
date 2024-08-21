@@ -1,7 +1,0 @@
-[workspace]
-members = [
-  "orchestrator",
-]
-resolver = "2"
-
-# [workspace.dependencies]
