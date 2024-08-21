@@ -47,5 +47,9 @@ export default class RoochIndexer {
     // Fetch the latest events from the Rooch Oracles Contract
     const newRequestsEvents = await this.fetchEvents("RequestAdded");
     // const newFulfilmentEvents = await this.fetchEvents("FulfilmentAdded");
+
+    // Filter the events to if they're only relevant to this Oracle (Orchestrator)
+    // Cache the events to local cache for retry in case of downtime.
+    // A separate concurrency process will listen for new events from cache and perform the request -- marking each event as completed when the request is made.
   }
 }

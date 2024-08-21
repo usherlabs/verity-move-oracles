@@ -217,6 +217,7 @@ module verity::oracles {
 
     public fun consume(): vector<RequestResponsePair> {
         // Enforce that recipient is the caller of the function -- ie. The third-party contract that has integrated this module.
+        // TODO: This needs to be enforced as the foreign module calling this module.
         let recipient = tx_context::sender();
 
         consume_for_recipient(recipient)
