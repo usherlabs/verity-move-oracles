@@ -229,6 +229,7 @@ module verity::test_oracles {
     use std::vector;
     use std::string;
     use moveos_std::signer;
+    use std::option::{Self};
     use verity::oracles::{Self, Request};
     use moveos_std::object::{Self, ObjectID};
 
