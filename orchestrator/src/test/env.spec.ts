@@ -66,15 +66,6 @@ describe(".env Check", () => {
       errorMessage: '"preferredChain" must be one of [ROOCH, APTOS]',
     },
     {
-      name: "Invalid Chain Check ",
-      data: {
-        PREFERRED_CHAIN: "ROOCHd",
-        ROOCH_ORACLE_ADDRESS: "0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6a",
-      },
-      wantErr: true,
-      errorMessage: '"preferredChain" must be one of [ROOCH, APTOS]',
-    },
-    {
       name: "valid ROOCH_ORACLE_ADDRESS but missing",
       data: {
         PREFERRED_CHAIN: "ROOCH",
