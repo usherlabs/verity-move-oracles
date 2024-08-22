@@ -12,10 +12,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      PREFERRED_CHAIN='ROOCH'
-      # ROOCH_ORACLE_ADDRESS= ${{ secrets.ROOCH_ORACLE_ADDRESS }}
-      # ROOCH_PRIVATE_KEY= ${{ secrets.ROOCH_PRIVATE_KEY }}
+    # env:
+    #   # ROOCH_ORACLE_ADDRESS= ${{ secrets.ROOCH_ORACLE_ADDRESS }}
+    #   # ROOCH_PRIVATE_KEY= ${{ secrets.ROOCH_PRIVATE_KEY }}
 
     strategy:
       matrix:
