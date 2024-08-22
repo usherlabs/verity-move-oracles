@@ -9,8 +9,8 @@ CREATE TABLE "Events" (
     "decoded_event_data" TEXT NOT NULL,
     "status" INTEGER NOT NULL,
     "retries" INTEGER NOT NULL,
-    "response" TEXT NOT NULL,
-    "executedAt" DATETIME NOT NULL,
+    "response" TEXT,
+    "executedAt" DATETIME,
     "indexedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updateAt" DATETIME NOT NULL
 );
