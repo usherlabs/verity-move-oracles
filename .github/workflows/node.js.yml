@@ -13,8 +13,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      ROOCH_ORACLE_ADDRESS= ${{ secrets.ROOCH_ORACLE_ADDRESS }}
-      ROOCH_PRIVATE_KEY= ${{ secrets.ROOCH_PRIVATE_KEY }}
+      # ROOCH_ORACLE_ADDRESS= ${{ secrets.ROOCH_ORACLE_ADDRESS }}
+      # ROOCH_PRIVATE_KEY= ${{ secrets.ROOCH_PRIVATE_KEY }}
+
+      # Temp key to pass .env checks
+      ROOCH_ORACLE_ADDRESS= 0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6b
+      ROOCH_PRIVATE_KEY= 0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6b
     strategy:
       matrix:
         node-version: [20.x]

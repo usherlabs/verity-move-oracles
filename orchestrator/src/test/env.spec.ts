@@ -25,8 +25,10 @@ const deleteEnvFile = (envFilePath: string) => {
 };
 
 describe(".env Check", () => {
-  const testFilePath = envFilePath + randomUUID();
-  beforeEach(() => {});
+  let testFilePath: string;
+  beforeEach(() => {
+    testFilePath = envFilePath + randomUUID();
+  });
 
   afterEach(() => {
     deleteEnvFile(testFilePath);
