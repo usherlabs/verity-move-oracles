@@ -184,42 +184,42 @@ module verity::oracles {
     // }
 
     // ------------ HELPERS ------------
-    fun borrow_request(id: ObjectID): &Request {
-        let ref = object::borrow_object<Request>(id);
+    fun borrow_request(id: &ObjectID): &Request {
+        let ref = object::borrow_object<Request>(*id);
         object::borrow(ref)
     }
 
-    public fun get_request_oracle(id: ObjectID): address {
+    public fun get_request_oracle(id: &ObjectID): address {
         let request = borrow_request(id);
         request.oracle
     }
 
-    public fun get_request_pick(id: ObjectID): String {
+    public fun get_request_pick(id: &ObjectID): String {
         let request = borrow_request(id);
         request.pick
     }
 
-    public fun get_request_params_url(id: ObjectID): String {
+    public fun get_request_params_url(id: &ObjectID): String {
         let request = borrow_request(id);
         request.params.url
     }
 
-    public fun get_request_params_method(id: ObjectID): String {
+    public fun get_request_params_method(id: &ObjectID): String {
         let request = borrow_request(id);
         request.params.method
     }
 
-    public fun get_request_params_headers(id: ObjectID): String {
+    public fun get_request_params_headers(id: &ObjectID): String {
         let request = borrow_request(id);
         request.params.headers
     }
 
-    public fun get_request_params_body(id: ObjectID): String {
+    public fun get_request_params_body(id: &ObjectID): String {
         let request = borrow_request(id);
         request.params.body
     }
 
-    public fun get_response(id: ObjectID): Option<String> {
+    public fun get_response(id: &ObjectID): Option<String> {
         let request = borrow_request(id);
         request.response
     }
@@ -267,9 +267,9 @@ module verity::test_oracles {
         let id = create_oracle_request();
 
         // Test the Object
-        assert!(oracles::get_request_oracle(id) == @0x45, 99951);
-        assert!(oracles::get_request_params_url(id) == string::utf8(b"https://api.example.com/data"), 99952);
-        assert!(oracles::get_request_params_method(id) == string::utf8(b"GET"), 99953);
+        assert!(oracles::get_request_oracle(&id) == @0x45, 99951);
+        assert!(oracles::get_request_params_url(&id) == string::utf8(b"https://api.example.com/data"), 99952);
+        assert!(oracles::get_request_params_method(&id) == string::utf8(b"GET"), 99953);
         assert!(oracles::get_request_params_body(id) == string::utf8(b""), 99954);
 
         // let recipient = object::owner(request_ref);

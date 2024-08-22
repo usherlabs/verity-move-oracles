@@ -5,13 +5,12 @@
 // ? Please keep aware of the OPTIONAL section in this module.
 module verity_test_foreign_module::example_caller {
     use moveos_std::event;
-    use moveos_std::tx_context;
-    use moveos_std::signer;
     use moveos_std::account;
-    use moveos_std::object::{Self, Object, ObjectID};
+    use moveos_std::object::{ObjectID};
+    use std::option::{Self, Option};
     use std::vector;
     use std::string::String;
-    use verity::oracles::{Self as Oracles, HTTPRequest};
+    use verity::oracles::{Self as Oracles};
 
     struct GlobalParams has key {
       pending_requests: vector<ObjectID>,
@@ -22,7 +21,7 @@ module verity_test_foreign_module::example_caller {
     struct RequestFulfilledEvent has copy, drop {
       request_url: String,
       request_method: String,
-      response: String,
+      response: Option<String>,
     }
     // \ ------ OPTIONAL ------
 
@@ -40,7 +39,7 @@ module verity_test_foreign_module::example_caller {
         body: String,
         pick: String,
         oracle: address
-    ): ObjectID {
+    ) {
         let http_request = Oracles::build_request(url, method, headers, body);
 
         // We're passing the address and function name of the module as the recipient.
@@ -49,7 +48,6 @@ module verity_test_foreign_module::example_caller {
         // let no_notify_request_id = Oracles::new_request(http_request, pick, oracle, Oracles::without_notify());
         let params = account::borrow_mut_resource<GlobalParams>(@verity_test_foreign_module);
         vector::push_back(&mut params.pending_requests, request_id);
-        request_id
     }
 
     // This notify function is called by the Oracle.
@@ -61,24 +59,29 @@ module verity_test_foreign_module::example_caller {
         let i = 0;
         while (i < vector::length(&pending_requests)) {
             let request_id = vector::borrow(&pending_requests, i);
+            // Remove the fulfilled request from the pending_requests vector
+            // This ensures unfulfilled requests are retained in the vector
+            if (option::is_some(&Oracles::get_response(request_id))) {
+                vector::remove(&mut params.pending_requests, i);
+                // Decrement i to account for the removed element
+                if (i > 0) {
+                    i = i - 1;
+                };
 
-            // ? ------ OPTIONAL ------
-            let request_url = Oracles::get_request_params_url(&request_id);
-            let request_method = Oracles::get_request_params_method(&request_id);
-            let response = Oracles::get_response(&request_id);
-            // For each fulfilment, emit an event
-            event::emit(RequestFulfilledEvent {
-              request_url,
-              request_method,
-              response,
-            });
-            // \ ------ OPTIONAL ------
-
+                // ? ------ OPTIONAL ------
+                let request_url = Oracles::get_request_params_url(request_id);
+                let request_method = Oracles::get_request_params_method(request_id);
+                let response = Oracles::get_response(request_id);
+                // For each fulfilment, emit an event
+                event::emit(RequestFulfilledEvent {
+                  request_url,
+                  request_method,
+                  response,
+                });
+                // \ ------ OPTIONAL ------
+            };
 
             i = i + 1;
         };
-
-        // Empty pending requests
-        params.pending_requests = vector::empty<ObjectID>();
     }
 }
