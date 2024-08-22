@@ -1,0 +1,3 @@
+
+# Check if test cases pass
+npm run test
