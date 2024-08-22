@@ -11,7 +11,8 @@
       "recommended": true,
       "suspicious": {
         "noExplicitAny": "off",
-        "noConfusingVoidType": "off"
+        "noConfusingVoidType": "off",
+        "noThenProperty": "off"
       },
       "style": {
         "noUselessElse": "off",
