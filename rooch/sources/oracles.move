@@ -225,13 +225,13 @@ module verity::oracles {
     }
 }
 
+#[test_only]
 module verity::test_oracles {
-    use std::vector;
     use std::string;
     use moveos_std::signer;
     use std::option::{Self};
-    use verity::oracles::{Self, Request};
-    use moveos_std::object::{Self, ObjectID};
+    use verity::oracles::{Self, Request}; // Keep Request in scope to avoid borrow checker errors
+    use moveos_std::object::{ObjectID};
 
     struct Test has key {}
 
@@ -270,13 +270,13 @@ module verity::test_oracles {
         assert!(oracles::get_request_oracle(&id) == @0x45, 99951);
         assert!(oracles::get_request_params_url(&id) == string::utf8(b"https://api.example.com/data"), 99952);
         assert!(oracles::get_request_params_method(&id) == string::utf8(b"GET"), 99953);
-        assert!(oracles::get_request_params_body(id) == string::utf8(b""), 99954);
+        assert!(oracles::get_request_params_body(&id) == string::utf8(b""), 99954);
 
         // let recipient = object::owner(request_ref);
         // assert!(recipient == @0x46, 99955);
 
         fulfil_request(id);
 
-        assert!(oracles::get_response(id) == option::some(string::utf8(b"Hello World")), 99958);
+        assert!(oracles::get_response(&id) == option::some(string::utf8(b"Hello World")), 99958);
     }
 }
