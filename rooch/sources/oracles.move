@@ -36,6 +36,7 @@ module verity::oracles {
         pick: String, // An optional JQ string to pick the value from the response JSON data structure.
         oracle: address,
         response: Option<String>
+        // recommendation include a optional Int field for status to contain errors_code/statuscode
     }
 
     // Global params for the oracle system
@@ -48,7 +49,8 @@ module verity::oracles {
         params: HTTPRequest,
         pick: String, // An optional JQ string to pick the value from the response JSON data structure.
         oracle: address,
-        notify: Option<vector<u8>>
+        notify: Option<vector<u8>>,
+        request_id: ObjectID
     }
 
     struct Fulfilment has copy, drop {
@@ -137,7 +139,8 @@ module verity::oracles {
             params,
             pick,
             oracle,
-            notify
+            notify,
+            request_id
         });
 
         request_id

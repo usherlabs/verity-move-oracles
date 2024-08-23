@@ -11,6 +11,8 @@ const baseConfig = {
   sentryDSN: process.env.SENTRY_DSN ?? "",
   ecdsaPrivateKey: process.env.SENTRY_DSN ?? "",
   batchSize: process.env.BATCH_SIZE ?? 1000,
+  xApiSecret: process.env.X_API_SECRET ?? "",
+  xApiKey: process.env.X_API_KEY ?? "",
 };
 interface IEnvVars {
   preferredChain: SupportedChain;
@@ -21,6 +23,8 @@ interface IEnvVars {
   sentryDSN?: string;
   ecdsaPrivateKey?: string;
   batchSize: number;
+  xApiKey: string;
+  xApiSecret: string;
 }
 
 const envVarsSchema = Joi.object({
@@ -42,6 +46,8 @@ const envVarsSchema = Joi.object({
     }),
     SupportedChain.ROOCH,
   ),
+  xApiSecret: Joi.string().required(),
+  xApiKey: Joi.string().required(),
   roochIndexerCron: Joi.string().default("*/5 * * * * *"),
   sentryDSN: Joi.string().allow("", null),
   ecdsaPrivateKey: Joi.string().allow("", null),
@@ -62,6 +68,8 @@ export default {
   chain: envVars.preferredChain,
   ecdsaPrivateKey: envVars.ecdsaPrivateKey,
   sentryDSN: envVars.sentryDSN,
+  xApiSecret: envVars.xApiSecret,
+  xApiKey: envVars.xApiKey,
   rooch: {
     chainId: envVars.roochChainId,
     oracleAddress: envVars.roochOracleAddress,

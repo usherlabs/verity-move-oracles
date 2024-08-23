@@ -4,6 +4,7 @@ export type RoochEnv = {
   oracleAddress: string;
   indexerCron?: string;
 };
+export const ALLOWED_HOST = ["x.com", "api.x.com", "twitter.com", "api.twitter.com"];
 
 export const RoochNetworkList = ["testnet", "devnet", "localnet"] as const;
 
@@ -41,17 +42,18 @@ interface VecValue {
   vec: string[];
 }
 
-interface Value {
+export interface IRequestAdded {
   notify: NotifyValue;
   oracle: string;
   params: ParamsValue;
   pick: string;
+  request_id: string;
 }
 
-export interface IRequestAdded {
+interface IDecoded<T> {
   abilities: number;
   type: string;
-  value: Value;
+  value: T;
 }
 
 export interface IEvent<T> {
@@ -62,7 +64,7 @@ export interface IEvent<T> {
   event_type: string;
   event_data: string;
   event_index: string;
-  decoded_event_data: T;
+  decoded_event_data: IDecoded<T>;
 }
 
 interface Result<T> {
@@ -80,4 +82,5 @@ export const RequestStatus = {
   INVALID_URL: 3,
   INVALID_PAYLOAD: 4,
   UNREACHABLE: 5,
+  FAILED: 6,
 };
