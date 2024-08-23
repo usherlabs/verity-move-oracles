@@ -67,7 +67,7 @@ pnpm install
 Run the Prisma migration to update your database schema according to your models.
 
 ```bash
-npx prisma migrate dev
+npx prisma migrate deploy
 ```
 
 #### Step 6: Run Orchestrator
@@ -88,7 +88,7 @@ Finally, send a new request transaction to have it indexed. Make sure to replace
 
 ```bash
 cd rooch
-rooch move run --function <deploymentAddress>::example_caller::request_data --sender-account default --args 'string:v2v3v' --args 'string:v2v3v' --args 'string:v2v3v' --args 'string:v2v3v' --args 'string:v2v3v' --args 'address:0x9a759932a6640790b3e2a5fefdf23917c8830dcd8998fe8af3f3b49b0ab5ca35'
+rooch move run --function <contractAddress>::example_caller::request_data --sender-account default --args 'string:v2v3v' --args 'string:v2v3v' --args 'string:v2v3v' --args 'string:v2v3v' --args 'string:v2v3v' --args 'address:0x9a759932a6640790b3e2a5fefdf23917c8830dcd8998fe8af3f3b49b0ab5ca35'
 ```
 
 
