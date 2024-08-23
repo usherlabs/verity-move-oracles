@@ -4,6 +4,9 @@
     "indentStyle": "space",
     "lineWidth": 120
   },
+  "files": {
+    "ignore": ["node_modules/*", "node_modules/**/*", "dist/"]
+  },
   "organizeImports": { "enabled": true },
   "linter": {
     "enabled": true,

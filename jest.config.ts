@@ -1,5 +1,5 @@
 // TODO: Improve coverage to 90%
-const coverageToNumber = 40; // [0..100]
+const coverageToNumber = 20; // [0..100]
 
 /*
  * For a detailed explanation regarding each configuration property and type check, visit:

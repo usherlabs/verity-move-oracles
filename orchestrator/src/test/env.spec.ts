@@ -77,11 +77,23 @@ describe(".env Check", () => {
       errorMessage: '"roochPrivateKey" is not allowed to be empty',
     },
     {
+      name: "missing X data",
+      data: {
+        PREFERRED_CHAIN: "ROOCH",
+        ROOCH_ORACLE_ADDRESS: "0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6c",
+        ROOCH_PRIVATE_KEY: "0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6c",
+      },
+      wantErr: true,
+      errorMessage: '"xApiSecret" is not allowed to be empty',
+    },
+    {
       name: "valid data",
       data: {
         PREFERRED_CHAIN: "ROOCH",
         ROOCH_ORACLE_ADDRESS: "0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6c",
         ROOCH_PRIVATE_KEY: "0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6c",
+        X_API_KEY: "key",
+        X_API_SECRET: "secret",
       },
       wantErr: false,
       errorMessage: '"roochPrivateKey" is not allowed to be empty',
