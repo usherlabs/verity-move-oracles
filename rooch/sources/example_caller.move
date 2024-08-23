@@ -28,8 +28,10 @@ module verity_test_foreign_module::example_caller {
     // Initiate the module with an empty vector of pending requests
     // Requests are managed in the caller to prevent other modules from impersonating the calling module, and spoofing new data.
     fun init(){
-      let params = account::borrow_mut_resource<GlobalParams>(@verity_test_foreign_module);
-      params.pending_requests = vector::empty<ObjectID>();
+      // let params = account::borrow_mut_resource<GlobalParams>(@verity_test_foreign_module); // account::borrow_mut_resource  in init throws an error on deployment
+      // params.pending_requests = vector::empty<ObjectID>();
+      let signer = moveos_std::signer::module_signer<GlobalParams>();
+      account::move_resource_to(&signer, GlobalParams { pending_requests: vector::empty<ObjectID>() });
     }
 
     public entry fun request_data(

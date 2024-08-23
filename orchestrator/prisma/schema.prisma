@@ -21,10 +21,10 @@ model Events{
 
   status                    Int
   retries                   Int
-  response                  String  //JSON String
-  executedAt                DateTime
+  response                  String?  //JSON String
+  executedAt                DateTime?
   indexedAt                 DateTime  @default(now())
-  updateAt   DateTime @updatedAt
+  updateAt                  DateTime  @updatedAt
 
   @@index([eventHandleId, eventSeq])
 }

@@ -7,8 +7,10 @@ const baseConfig = {
   roochChainId: process.env.ROOCH_CHAIN_ID,
   roochPrivateKey: process.env.ROOCH_PRIVATE_KEY ?? "",
   roochOracleAddress: process.env.ROOCH_ORACLE_ADDRESS ?? "",
+  roochIndexerCron: process.env.ROOCH_INDEXER_CRON,
   sentryDSN: process.env.SENTRY_DSN ?? "",
   ecdsaPrivateKey: process.env.SENTRY_DSN ?? "",
+  batchSize: process.env.BATCH_SIZE ?? 1000,
 };
 interface IEnvVars {
   preferredChain: SupportedChain;
@@ -18,6 +20,7 @@ interface IEnvVars {
   roochIndexerCron: string;
   sentryDSN?: string;
   ecdsaPrivateKey?: string;
+  batchSize: number;
 }
 
 const envVarsSchema = Joi.object({
@@ -42,6 +45,7 @@ const envVarsSchema = Joi.object({
   roochIndexerCron: Joi.string().default("*/5 * * * * *"),
   sentryDSN: Joi.string().allow("", null),
   ecdsaPrivateKey: Joi.string().allow("", null),
+  batchSize: Joi.number().default(1000),
 });
 
 const { value, error } = envVarsSchema.validate({
@@ -54,6 +58,7 @@ if (error) {
 const envVars = value as IEnvVars;
 
 export default {
+  batchSize: envVars.batchSize,
   chain: envVars.preferredChain,
   ecdsaPrivateKey: envVars.ecdsaPrivateKey,
   sentryDSN: envVars.sentryDSN,
