@@ -63,7 +63,11 @@ export default class RoochIndexer {
         },
       );
 
-      // log.info("Events fetched successfully", response.data);
+      log.debug(
+        response?.data?.result?.data?.length > 0
+          ? `fetched ${response?.data?.result?.data?.length ?? 0} events successfully`
+          : "No New Event",
+      );
 
       return response.data;
     } catch (error) {

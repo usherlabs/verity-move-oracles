@@ -88,7 +88,7 @@ Finally, send a new request transaction to have it indexed. Make sure to replace
 
 ```bash
 cd rooch
-rooch move run --function <contractAddress>::example_caller::request_data --sender-account default --args 'string:v2v3v' --args 'string:v2v3v' --args 'string:v2v3v' --args 'string:v2v3v' --args 'string:v2v3v' --args 'address:0x9a759932a6640790b3e2a5fefdf23917c8830dcd8998fe8af3f3b49b0ab5ca35'
+rooch move run --function  <contractAddress>::example_caller::request_data --sender-account default --args 'string:api.x.com' --args 'string:POST' --args 'string:v2v3v' --args 'string:{"test":1}' --args 'string:' --args 'address:0xd5ea168fcbeb42ca8c891a1b3cf54edf48035389f0dacaa7d374fcc483927f7d'
 ```
 
 
