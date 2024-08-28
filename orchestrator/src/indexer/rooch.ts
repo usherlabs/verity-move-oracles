@@ -3,7 +3,8 @@ import { log } from "@/logger";
 import { xInstance } from "@/request/twitter";
 import { type IRequestAdded, type JsonRpcResponse, RequestStatus, type RoochNetwork } from "@/types";
 import { Args, RoochClient, Secp256k1Keypair, Transaction, getRoochNodeUrl } from "@roochnetwork/rooch-sdk";
-import axios from "axios";
+import axios, { type AxiosResponse } from "axios";
+import { run } from "node-jq";
 import prismaClient from "../../prisma";
 
 const ALLOWED_HOST = ["x.com", "api.x.com", "twitter.com", "api.twitter.com"];
@@ -38,7 +39,7 @@ export default class RoochIndexer {
   }
 
   async fetchEvents<T>(
-    eventName: "RequestAdded" | "FulfilmentAdded",
+    eventName: "RequestAdded" | "Fulfilment",
     last_processed: null | number = null,
   ): Promise<JsonRpcResponse<T> | null> {
     try {
@@ -95,13 +96,17 @@ export default class RoochIndexer {
       args: [Args.objectId(data.request_id), Args.string(result)],
     });
 
-    return await client.signAndExecuteTransaction({
+    const receipt = await client.signAndExecuteTransaction({
       transaction: tx,
       signer: session,
     });
+
+    log.debug(receipt);
+    return receipt;
   }
 
   async processRequestAddedEvent(data: IRequestAdded) {
+    log.debug("processing:", data.request_id);
     const token = xInstance.getAccessToken();
 
     if (data.oracle.toLowerCase() !== this.orchestrator) {
@@ -119,8 +124,9 @@ export default class RoochIndexer {
     }
 
     try {
+      let request: AxiosResponse<any, any>;
       if (isValidJson(data.params.value.headers)) {
-        const request = await axios({
+        request = await axios({
           method: data.params.value.method,
           data: data.params.value.body,
           url: url,
@@ -129,9 +135,9 @@ export default class RoochIndexer {
             Authorization: `Bearer ${token}`,
           },
         });
-        return { status: request.status, message: request.data };
+        // return { status: request.status, message: request.data };
       } else {
-        const request = await axios({
+        request = await axios({
           method: data.params.value.method,
           data: data.params.value.body,
           url: url,
@@ -139,9 +145,22 @@ export default class RoochIndexer {
             Authorization: `Bearer ${token}`,
           },
         });
-        return { status: request.status, message: request.data };
       }
-    } catch (error) {
+
+      log.debug({ responseData: request.data });
+      try {
+        const result = await run(data.pick, JSON.stringify(request.data), { input: "string" });
+        log.debug({ result });
+        return result;
+      } catch {
+        return { status: 406, message: "`Pick` value provided could not be resolved on the returned response" };
+      }
+      // return { status: request.status, message: result };
+    } catch (error: any) {
+      log.debug({
+        error: error.message,
+      });
+
       if (axios.isAxiosError(error)) {
         // Handle Axios-specific errors
         if (error.response) {

@@ -88,7 +88,7 @@ Finally, send a new request transaction to have it indexed. Make sure to replace
 
 ```bash
 cd rooch
-rooch move run --function  <contractAddress>::example_caller::request_data --sender-account default --args 'string:api.x.com' --args 'string:POST' --args 'string:v2v3v' --args 'string:{"test":1}' --args 'string:' --args 'address:0xd5ea168fcbeb42ca8c891a1b3cf54edf48035389f0dacaa7d374fcc483927f7d'
+rooch move run --function  <contractAddress>::example_caller::request_data --sender-account default --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:0xd5ea168fcbeb42ca8c891a1b3cf54edf48035389f0dacaa7d374fcc483927f7d'
 ```
 
 
