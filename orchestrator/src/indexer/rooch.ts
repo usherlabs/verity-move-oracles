@@ -31,7 +31,7 @@ export default class RoochIndexer {
     private oracleAddress: string,
   ) {
     this.keyPair = Secp256k1Keypair.fromSecretKey(this.privateKey);
-    this.orchestrator = `0x${this.keyPair.getSchnorrPublicKey()}`.toLowerCase();
+    this.orchestrator = this.keyPair.getRoochAddress().toHexAddress();
     log.info(`Rooch Indexer initialized`);
     log.info(`Chain ID: ${this.chainId}`);
     log.info(`Oracle Address: ${this.oracleAddress}`);
@@ -77,19 +77,10 @@ export default class RoochIndexer {
     }
   }
 
-  async sendFulfillment(data: IRequestAdded, result: string) {
+  async sendFulfillment(data: IRequestAdded, status: number, result: string) {
     const client = new RoochClient({
       url: getRoochNodeUrl(this.chainId),
     });
-    const session = await client.createSession({
-      sessionArgs: {
-        appName: "your app name",
-        appUrl: "your app url",
-        scopes: [`${this.oracleAddress}::oracles::fulfil_request`],
-      },
-      signer: this.keyPair,
-    });
-
     const tx = new Transaction();
     tx.callFunction({
       target: `${this.oracleAddress}::oracles::fulfil_request`,
@@ -98,7 +89,7 @@ export default class RoochIndexer {
 
     const receipt = await client.signAndExecuteTransaction({
       transaction: tx,
-      signer: session,
+      signer: this.keyPair,
     });
 
     log.debug(receipt);
@@ -109,9 +100,9 @@ export default class RoochIndexer {
     log.debug("processing:", data.request_id);
     const token = xInstance.getAccessToken();
 
-    if (data.oracle.toLowerCase() !== this.orchestrator) {
-      return null;
-    }
+    // if (data.oracle.toLowerCase() !== this.orchestrator) {
+    //   return null;
+    // }
     const url = data.params.value.url?.includes("http") ? data.params.value.url : `https://${data.params.value.url}`;
     try {
       const _url = new URL(url);
@@ -151,9 +142,9 @@ export default class RoochIndexer {
       try {
         const result = await run(data.pick, JSON.stringify(request.data), { input: "string" });
         log.debug({ result });
-        return result;
+        return { status: request.status, message: result };
       } catch {
-        return { status: 406, message: "`Pick` value provided could not be resolved on the returned response" };
+        return { status: 409, message: "`Pick` value provided could not be resolved on the returned response" };
       }
       // return { status: request.status, message: result };
     } catch (error: any) {
@@ -201,7 +192,11 @@ export default class RoochIndexer {
         const data = await this.processRequestAddedEvent(event.decoded_event_data.value);
         if (data) {
           try {
-            const temp = await this.sendFulfillment(event.decoded_event_data.value, JSON.stringify(data));
+            const temp = await this.sendFulfillment(
+              event.decoded_event_data.value,
+              data.status,
+              JSON.stringify(data.message),
+            );
             await prismaClient.events.create({
               data: {
                 eventHandleId: event.event_id.event_handle_id,
@@ -216,6 +211,7 @@ export default class RoochIndexer {
               },
             });
           } catch (err) {
+            log.error(err);
             await prismaClient.events.create({
               data: {
                 eventHandleId: event.event_id.event_handle_id,

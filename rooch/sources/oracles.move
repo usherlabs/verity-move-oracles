@@ -35,8 +35,8 @@ module verity::oracles {
         params: HTTPRequest,
         pick: String, // An optional JQ string to pick the value from the response JSON data structure.
         oracle: address,
+        status: u8,
         response: Option<String>
-        // recommendation include a optional Int field for status to contain errors_code/statuscode
     }
 
     // Global params for the oracle system
@@ -127,7 +127,8 @@ module verity::oracles {
             params,
             pick,
             oracle,
-            response: option::none()
+            status: 0,
+            response: option::none(),
         });
         let request_id = object::id(&request);
         object::transfer(request, oracle); // transfer to oracle to ensure permission
@@ -152,6 +153,7 @@ module verity::oracles {
     public entry fun fulfil_request(
         sender: &signer,
         id: ObjectID,
+        status:u8,
         result: String
         // proof: String
     ) {
@@ -168,6 +170,7 @@ module verity::oracles {
 
         // Fulfil the request
         request.response = option::some(result);
+        request.status = status;
 
         // TODO: Move gas from module escrow to Oracle
 
