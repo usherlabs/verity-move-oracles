@@ -92,17 +92,17 @@ export default class RoochIndexer {
       signer: this.keyPair,
     });
 
-    log.debug(receipt);
+    log.debug(receipt.execution_info);
     return receipt;
   }
 
   async processRequestAddedEvent(data: IRequestAdded) {
-    log.debug("processing:", data.request_id);
+    log.debug("processing request:", data.request_id);
     const token = xInstance.getAccessToken();
 
-    // if (data.oracle.toLowerCase() !== this.orchestrator) {
-    //   return null;
-    // }
+    if (data.oracle.toLowerCase() !== this.orchestrator) {
+      return null;
+    }
     const url = data.params.value.url?.includes("http") ? data.params.value.url : `https://${data.params.value.url}`;
     try {
       const _url = new URL(url);
