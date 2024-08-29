@@ -35,7 +35,7 @@ module verity::oracles {
         params: HTTPRequest,
         pick: String, // An optional JQ string to pick the value from the response JSON data structure.
         oracle: address,
-        status: u8,
+        response_status: u8,
         response: Option<String>
     }
 
@@ -153,7 +153,7 @@ module verity::oracles {
     public entry fun fulfil_request(
         sender: &signer,
         id: ObjectID,
-        status:u8,
+        status: u8,
         result: String
         // proof: String
     ) {
@@ -170,7 +170,7 @@ module verity::oracles {
 
         // Fulfil the request
         request.response = option::some(result);
-        request.status = status;
+        request.response_status = status;
 
         // TODO: Move gas from module escrow to Oracle
 
@@ -228,6 +228,11 @@ module verity::oracles {
     public fun get_response(id: &ObjectID): Option<String> {
         let request = borrow_request(id);
         request.response
+    }
+
+    public fun get_response_status(id: &ObjectID): Option<String> {
+        let request = borrow_request(id);
+        request.response_status
     }
 }
 
