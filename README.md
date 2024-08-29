@@ -87,7 +87,6 @@ pnpm dev
 Finally, send a new request transaction to have it indexed. Make sure to replace placeholders with actual values relevant to your setup.
 
 ```bash
-cd rooch
 rooch move run --function  <contractAddress>::example_caller::request_data --sender-account <Orchestrator Address> --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:<Orchestrator Address>'
 ```
 
