@@ -7,6 +7,7 @@ import axios, { type AxiosResponse } from "axios";
 import { run } from "node-jq";
 import prismaClient from "../../prisma";
 
+// TODO: We'll eventually need to framework our this orchestrator and indexer to allow Oracle Operators to create their own connections to various hosts.
 const ALLOWED_HOST = ["x.com", "api.x.com", "twitter.com", "api.twitter.com"];
 
 function isValidJson(jsonString: string): boolean {
@@ -182,9 +183,13 @@ export default class RoochIndexer {
     // Fetch the latest events from the Rooch Oracles Contract
     const newRequestsEvents = await this.fetchEvents<IRequestAdded>("RequestAdded", latestCommit?.eventSeq ?? null);
 
-    if (!newRequestsEvents || "data" in newRequestsEvents) {
-      log.error(newRequestsEvents);
-      //TODO: HANDLE ERROR
+    if (!newRequestsEvents) {
+      // Events no relevant for this Oracle Node.
+      return;
+    }
+
+    if (!newRequestsEvents.result?.data) {
+      log.debug("No new events found", newRequestsEvents);
       return;
     }
 
