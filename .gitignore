@@ -130,3 +130,5 @@ temp*
 # Prisma
 prisma/.db
 prisma/.db*
+orchestrator/prisma/.db
+orchestrator/prisma/.db*

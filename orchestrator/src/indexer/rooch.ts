@@ -34,8 +34,8 @@ export default class RoochIndexer {
     this.orchestrator = this.keyPair.getRoochAddress().toHexAddress();
     log.info(`Rooch Indexer initialized`);
     log.info(`Chain ID: ${this.chainId}`);
-    log.info(`Oracle Address: ${this.oracleAddress}`);
-    log.info(`Orchestrator Address: ${this.orchestrator}`);
+    log.info(`Oracle Contract Address: ${this.oracleAddress}`);
+    log.info(`Orchestrator Oracle Node Address: ${this.orchestrator}`);
   }
 
   async fetchEvents<T>(
