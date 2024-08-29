@@ -10,7 +10,6 @@ The first Oracle supported is an Oracle for X (Twitter) data.
 - [ ] [Aptos](https://aptosfoundation.org/)
 - [ ] ~Sui~
 
-
 ## Running Rooch orchestrator (Locally)
 
 ### Prerequisites
@@ -70,7 +69,25 @@ Run the Prisma migration to update your database schema according to your models
 npx prisma migrate deploy
 ```
 
-#### Step 6: Run Orchestrator
+#### Step 6: Update the .env file with the correct values
+
+Copy the example environment file to create your own `.env` file:
+
+```bash
+cp .env.example .env
+```
+
+Export the Rooch Private Key:
+
+```bash
+rooch account export --address <Rooch Address>
+``` 
+
+To connect to the local Rooch node, set `ROOCH_CHAIN_ID` to `"localnet"`.  
+Otherwise, connect to DevNet by setting `ROOCH_CHAIN_ID` to `"devnet"`, or to TestNet by setting `ROOCH_CHAIN_ID` to `"testnet"`.  
+Ensure that `ROOCH_ORACLE_ADDRESS` is set to the address of the deployed module, e.g., `"0x85859e45551846d9ab8651bb0b6f6e1740c9d758cfda05cfc39d49e2a604d783"`.
+
+#### Step 7: Run Orchestrator
 
 Start the development server for your application. This step might vary depending on your project setup; the command below assumes a typical setup.
 
@@ -82,12 +99,10 @@ yarn dev
 pnpm dev
 ```
 
-#### Step 7: Send New Request Transaction
+#### Step 8: Send New Request Transaction
 
 Finally, send a new request transaction to have it indexed. Make sure to replace placeholders with actual values relevant to your setup.
 
 ```bash
 rooch move run --function  <contractAddress>::example_caller::request_data --sender-account <Orchestrator Address> --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:<Orchestrator Address>'
 ```
-
-

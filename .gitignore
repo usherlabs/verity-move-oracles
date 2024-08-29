@@ -126,3 +126,7 @@ temp*
 
 # else
 .script
+
+# Prisma
+prisma/.db
+prisma/.db*
