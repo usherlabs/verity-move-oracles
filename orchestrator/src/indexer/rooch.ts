@@ -117,6 +117,7 @@ export default class RoochIndexer {
     try {
       let request: AxiosResponse<any, any>;
       if (isValidJson(data.params.value.headers)) {
+        // TODO: Replace direct requests via axios with requests via VerityClient TS module
         request = await axios({
           method: data.params.value.method,
           data: data.params.value.body,
@@ -192,11 +193,9 @@ export default class RoochIndexer {
         const data = await this.processRequestAddedEvent(event.decoded_event_data.value);
         if (data) {
           try {
-            const temp = await this.sendFulfillment(
-              event.decoded_event_data.value,
-              data.status,
-              JSON.stringify(data.message),
-            );
+            await this.sendFulfillment(event.decoded_event_data.value, data.status, JSON.stringify(data.message));
+            // TODO: Use the notify parameter to send transaction to the contract and function to marked in the request event
+
             await prismaClient.events.create({
               data: {
                 eventHandleId: event.event_id.event_handle_id,
