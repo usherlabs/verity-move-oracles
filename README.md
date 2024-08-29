@@ -17,7 +17,7 @@ The first Oracle supported is an Oracle for X (Twitter) data.
 
 Before running the script, ensure you have the following prerequisites installed:
 
-- **Roach**: A blockchain development toolset.
+- **Rooch**: A blockchain development toolset.
 - **Node.js**: Alongside npm, yarn, or pnpm package managers.
 
 ### Step-by-Step Instructions
