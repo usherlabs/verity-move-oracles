@@ -85,7 +85,7 @@ export default class RoochIndexer {
     const tx = new Transaction();
     tx.callFunction({
       target: `${this.oracleAddress}::oracles::fulfil_request`,
-      args: [Args.objectId(data.request_id), Args.string(result)],
+      args: [Args.objectId(data.request_id), Args.u8(status), Args.string(result)],
     });
 
     const receipt = await client.signAndExecuteTransaction({

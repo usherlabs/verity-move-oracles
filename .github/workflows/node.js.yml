@@ -9,9 +9,14 @@ on:
   pull_request:
     branches: [main]
 
+
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20.x]
     # env:
     #   # ROOCH_ORACLE_ADDRESS= ${{ secrets.ROOCH_ORACLE_ADDRESS }}
     #   # ROOCH_PRIVATE_KEY= ${{ secrets.ROOCH_PRIVATE_KEY }}
@@ -32,3 +37,22 @@ jobs:
 
       - name: build
         run: npx yarn build
+
+    # Set up Rust
+    - uses: actions/setup-rust@v1
+      with:
+        toolchain: stable
+    
+    - name: Clone and setup Rooch
+      run: |
+        git clone https://github.com/rooch-network/rooch.git _rooch
+        cd _rooch
+        cargo build
+        cp target/debug/rooch ~/.cargo/bin/
+
+
+
+    
+    # Run tests
+    - run: rooch move test
+    - run: cargo test

@@ -127,7 +127,7 @@ module verity::oracles {
             params,
             pick,
             oracle,
-            status: 0,
+            response_status: 0,
             response: option::none(),
         });
         let request_id = object::id(&request);
@@ -153,7 +153,7 @@ module verity::oracles {
     public entry fun fulfil_request(
         sender: &signer,
         id: ObjectID,
-        status: u8,
+        response_status: u8,
         result: String
         // proof: String
     ) {
@@ -170,7 +170,7 @@ module verity::oracles {
 
         // Fulfil the request
         request.response = option::some(result);
-        request.response_status = status;
+        request.response_status = response_status;
 
         // TODO: Move gas from module escrow to Oracle
 
@@ -230,7 +230,7 @@ module verity::oracles {
         request.response
     }
 
-    public fun get_response_status(id: &ObjectID): Option<String> {
+    public fun get_response_status(id: &ObjectID): u8 {
         let request = borrow_request(id);
         request.response_status
     }
@@ -263,18 +263,19 @@ module verity::test_oracles {
     }
 
     /// Test function to consume the FulfilRequestObject
-    public fun fulfil_request(id: ObjectID) {
+    fun fulfil_request(id: ObjectID) {
         let result = string::utf8(b"Hello World");
         // let proof = string::utf8(b"");
 
         let sig = signer::module_signer<Test>();
 
         // oracles::fulfil_request(id, result, proof);
-        oracles::fulfil_request(&sig, id, result);
+        oracles::fulfil_request(&sig, id, 200, result);
     }
 
     #[test]
     public fun test_consume_fulfil_request() {
+
         let id = create_oracle_request();
 
         // Test the Object
@@ -282,6 +283,7 @@ module verity::test_oracles {
         assert!(oracles::get_request_params_url(&id) == string::utf8(b"https://api.example.com/data"), 99952);
         assert!(oracles::get_request_params_method(&id) == string::utf8(b"GET"), 99953);
         assert!(oracles::get_request_params_body(&id) == string::utf8(b""), 99954);
+        assert!(oracles::get_response_status(&id) ==(0 as u8), 99955);
 
         // let recipient = object::owner(request_ref);
         // assert!(recipient == @0x46, 99955);
@@ -289,5 +291,7 @@ module verity::test_oracles {
         fulfil_request(id);
 
         assert!(oracles::get_response(&id) == option::some(string::utf8(b"Hello World")), 99958);
+        assert!(oracles::get_response_status(&id) == (0 as u8), 99959);
+
     }
 }
