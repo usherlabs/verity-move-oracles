@@ -59,8 +59,6 @@ jobs:
         run: npx yarn build
 
       - name: Run rooch test
-        env:
-          RUST_BACKTRACE=1
         run: |
           rooch init --config-dir ./rooch --skip-password
           rooch move test -p ./rooch --config-dir ./rooch  --json 
