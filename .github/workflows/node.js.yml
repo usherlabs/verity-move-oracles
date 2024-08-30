@@ -46,15 +46,13 @@ jobs:
       - name: build
         run: npx yarn build
 
-      # Set up Rust
-      - uses: actions/setup-rust@v1
-        with:
-          toolchain: stable
       
       - name: Clone and setup Rooch
         run: |
           git clone https://github.com/rooch-network/rooch.git _rooch
           cd _rooch
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+          source $HOME/.cargo/env
           cargo build
           cp target/debug/rooch ~/.cargo/bin/
           cd rooch
