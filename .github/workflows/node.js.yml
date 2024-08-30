@@ -31,6 +31,7 @@ jobs:
 
       - name: Clone and setup Rooch
         run: |
+          apt install git curl cmake make gcc  pkg-config libssl-dev  libsqlite3-dev g++
           git clone https://github.com/rooch-network/rooch.git _rooch
           cd _rooch
           cargo build
