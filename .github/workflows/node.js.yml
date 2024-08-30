@@ -39,7 +39,6 @@ jobs:
         run: |
           unzip rooch-ubuntu-latest.zip
           sudo cp rooch-artifacts/rooch /usr/local/bin
-          mkdir ./.rooch
           rooch --version
           echo "Installation completed"
       
@@ -58,7 +57,7 @@ jobs:
 
       - name: Run rooch test
         run: |
-          rooch init --config-dir ./.rooch --skip-password --password test
-          rooch move test -p ./.rooch --config-dir ./rooch  --json 
+          rooch init --config-dir ./${{ runner.temp }} --skip-password --password test
+          rooch move test -p ./${{ runner.temp }} --config-dir ./rooch  --json 
 
       
