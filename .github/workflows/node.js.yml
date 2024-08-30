@@ -58,6 +58,6 @@ jobs:
       - name: Run rooch test
         run: |
           rooch init --config-dir ./${{ runner.temp }} --skip-password --password test
-          rooch move test -p ./${{ runner.temp }} --config-dir ./rooch  --json 
+          rooch move test -p ./rooch --config-dir ./${{ runner.temp }}  --json 
 
       
