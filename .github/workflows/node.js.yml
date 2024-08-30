@@ -39,12 +39,11 @@ jobs:
           unzip rooch-ubuntu-latest.zip
           sudo cp rooch-artifacts/rooch /usr/local/bin
           rooch --version
+          rooch init
           echo "Installation completed"
       
       - name: Run rooch test
-        run: |
-          cd rooch
-          rooch move test
+        run: rooch move test -p rooch
 
       - name: Use Node.js ${{ matrix.node-version }} 🛎️
         uses: actions/checkout@v3
