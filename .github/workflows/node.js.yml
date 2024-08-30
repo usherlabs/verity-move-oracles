@@ -41,7 +41,6 @@ jobs:
           sudo cp rooch-artifacts/rooch /usr/local/bin
           mkdir ./.rooch
           rooch --version
-          rooch init 
           echo "Installation completed"
       
 
