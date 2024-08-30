@@ -13,7 +13,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # env:
+    env:
+      RUST_BACKTRACE=1
     #   # ROOCH_ORACLE_ADDRESS= ${{ secrets.ROOCH_ORACLE_ADDRESS }}
     #   # ROOCH_PRIVATE_KEY= ${{ secrets.ROOCH_PRIVATE_KEY }}
 
@@ -22,12 +23,12 @@ jobs:
         node-version: [20.x]
 
     steps:
-      - name: Install latest nightly
-        uses: actions-rs/toolchain@v1
-        with:
-            toolchain: nightly
-            override: true
-            components: rustfmt, clippy
+      # - name: Install latest nightly
+      #   uses: actions-rs/toolchain@v1
+      #   with:
+      #       toolchain: nightly
+      #       override: true
+      #       components: rustfmt, clippy
 
       - name: Download rooch
         run: |
@@ -38,12 +39,12 @@ jobs:
         run: |
           unzip rooch-ubuntu-latest.zip
           sudo cp rooch-artifacts/rooch /usr/local/bin
+          mkdir .rooch
+          mkdir .rooch/rooch_config
           rooch --version
-          rooch init --config-dir ./rooch --skip-password
+          rooch init 
           echo "Installation completed"
       
-      - name: Run rooch test
-        run: rooch move test -p rooch  --config-dir ./rooch
 
       - name: Use Node.js ${{ matrix.node-version }} 🛎️
         uses: actions/checkout@v3
@@ -57,5 +58,11 @@ jobs:
       - name: build
         run: npx yarn build
 
+      - name: Run rooch test
+        env:
+          RUST_BACKTRACE=1
+        run: |
+          rooch init --config-dir ./rooch --skip-password
+          rooch move test -p ./rooch --config-dir ./rooch  --json 
 
       
