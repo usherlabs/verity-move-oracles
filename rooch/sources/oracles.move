@@ -269,7 +269,7 @@ module verity_test::test_oracles {
     use std::string;
     use moveos_std::signer;
     use std::option::{Self};
-    use verity::oracles::{Self,Request}; // Keep Request in scope to avoid borrow checker errors
+    use verity::oracles::{Self,Request};
     use moveos_std::object::{Self,ObjectID};
     use std::debug::print;
 
