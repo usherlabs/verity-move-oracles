@@ -180,6 +180,34 @@ module verity::oracles {
         });
     }
 
+    #[test_only]
+    public entry fun test_fulfil_request(
+        sender: &signer,
+        id: ObjectID,
+        response_status: u8,
+        result: String
+        // proof: String
+    ) {
+        assert!(object::exists_object_with_type<Request>(id), RequestNotFoundError);
+
+        let request_ref = object::borrow_mut_object<Request>(sender, id);
+        let request = object::borrow_mut(request_ref);
+
+        // // Verify the data and proof
+        // assert!(verify(result, proof), ProofNotValidError);
+
+        // Fulfil the request
+        request.response = option::some(result);
+        request.response_status = response_status;
+
+        // TODO: Move gas from module escrow to Oracle
+
+        // Emit fulfil event
+        event::emit(Fulfilment {
+            request: *request,
+        });
+    }
+
     // // This is a Version 0 of the verifier.
     // public fun verify(
     //     data: String,
@@ -237,15 +265,19 @@ module verity::oracles {
 }
 
 #[test_only]
-module verity::test_oracles {
+module verity_test::test_oracles {
     use std::string;
     use moveos_std::signer;
     use std::option::{Self};
-    use verity::oracles::{Self, Request}; // Keep Request in scope to avoid borrow checker errors
-    use moveos_std::object::{ObjectID};
+    use verity::oracles::{Self,Request}; // Keep Request in scope to avoid borrow checker errors
+    use moveos_std::object::{Self,ObjectID};
+    use std::debug::print;
 
-    struct Test has key {}
 
+    struct Test has key {
+    }
+
+    #[test_only]
     // Test for creating a new request
     public fun create_oracle_request(): ObjectID {
         let url = string::utf8(b"https://api.example.com/data");
@@ -256,21 +288,24 @@ module verity::test_oracles {
         let http_request = oracles::build_request(url, method, headers, body);
 
         let response_pick = string::utf8(b"");
-        let oracle = @0x45;
+        let sig = signer::module_signer<Test>();
+
+        let oracle = signer::address_of(&sig);
         // let recipient = @0x46;
 
-        oracles::new_request(http_request, response_pick, oracle, oracles::without_notify())
+        let request_id =oracles::new_request(http_request, response_pick, oracle, oracles::with_notify(@verity_test,b""));
+        request_id
     }
 
+    #[test_only]
     /// Test function to consume the FulfilRequestObject
-    fun fulfil_request(id: ObjectID) {
+    public fun fulfil_request(id: ObjectID) {
         let result = string::utf8(b"Hello World");
         // let proof = string::utf8(b"");
 
         let sig = signer::module_signer<Test>();
-
-        // oracles::fulfil_request(id, result, proof);
-        oracles::fulfil_request(&sig, id, 200, result);
+        print(&signer::address_of(&sig)); 
+        oracles::test_fulfil_request(&sig, id, 200, result);
     }
 
     #[test]
@@ -278,20 +313,22 @@ module verity::test_oracles {
 
         let id = create_oracle_request();
 
+        let sig = signer::module_signer<Test>();
         // Test the Object
-        assert!(oracles::get_request_oracle(&id) == @0x45, 99951);
+
+        assert!(oracles::get_request_oracle(&id) == signer::address_of(&sig), 99951);
         assert!(oracles::get_request_params_url(&id) == string::utf8(b"https://api.example.com/data"), 99952);
         assert!(oracles::get_request_params_method(&id) == string::utf8(b"GET"), 99953);
         assert!(oracles::get_request_params_body(&id) == string::utf8(b""), 99954);
         assert!(oracles::get_response_status(&id) ==(0 as u8), 99955);
 
-        // let recipient = object::owner(request_ref);
-        // assert!(recipient == @0x46, 99955);
+        let _data= object::borrow_object<Request>(id);
+        let recipient = object::owner(_data);
+        assert!(recipient == signer::address_of(&sig), 99955);
 
         fulfil_request(id);
 
         assert!(oracles::get_response(&id) == option::some(string::utf8(b"Hello World")), 99958);
-        assert!(oracles::get_response_status(&id) == (0 as u8), 99959);
-
+        assert!(oracles::get_response_status(&id) == (200 as u8), 99959);
     }
 }
