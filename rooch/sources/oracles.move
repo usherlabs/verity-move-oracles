@@ -223,21 +223,25 @@ module verity::oracles {
         object::borrow(ref)
     }
 
+    #[view]
     public fun get_request_oracle(id: &ObjectID): address {
         let request = borrow_request(id);
         request.oracle
     }
 
+    #[view]
     public fun get_request_pick(id: &ObjectID): String {
         let request = borrow_request(id);
         request.pick
     }
 
+    #[view]
     public fun get_request_params_url(id: &ObjectID): String {
         let request = borrow_request(id);
         request.params.url
     }
 
+    #[view]
     public fun get_request_params_method(id: &ObjectID): String {
         let request = borrow_request(id);
         request.params.method
@@ -248,16 +252,19 @@ module verity::oracles {
         request.params.headers
     }
 
+    #[view]
     public fun get_request_params_body(id: &ObjectID): String {
         let request = borrow_request(id);
         request.params.body
     }
 
+    #[view]
     public fun get_response(id: &ObjectID): Option<String> {
         let request = borrow_request(id);
         request.response
     }
 
+    #[view]
     public fun get_response_status(id: &ObjectID): u8 {
         let request = borrow_request(id);
         request.response_status
@@ -271,7 +278,6 @@ module verity_test::test_oracles {
     use std::option::{Self};
     use verity::oracles::{Self,Request};
     use moveos_std::object::{Self,ObjectID};
-    use std::debug::print;
 
 
     struct Test has key {
@@ -304,15 +310,13 @@ module verity_test::test_oracles {
         // let proof = string::utf8(b"");
 
         let sig = signer::module_signer<Test>();
-        print(&signer::address_of(&sig)); 
         oracles::test_fulfil_request(&sig, id, 200, result);
     }
 
+
     #[test]
-    public fun test_consume_fulfil_request() {
-
+    public fun test_view_functions(){
         let id = create_oracle_request();
-
         let sig = signer::module_signer<Test>();
         // Test the Object
 
@@ -321,6 +325,13 @@ module verity_test::test_oracles {
         assert!(oracles::get_request_params_method(&id) == string::utf8(b"GET"), 99953);
         assert!(oracles::get_request_params_body(&id) == string::utf8(b""), 99954);
         assert!(oracles::get_response_status(&id) ==(0 as u8), 99955);
+    }
+
+    #[test]
+    public fun test_consume_fulfil_request() {
+
+        let id = create_oracle_request();
+        let sig = signer::module_signer<Test>();
 
         let _data= object::borrow_object<Request>(id);
         let recipient = object::owner(_data);
