@@ -28,7 +28,9 @@
     "prisma:generate": "prisma generate --schema=./orchestrator/prisma/schema.prisma",
     "prisma:generate:dev": "prisma generate --schema=./orchestrator/prisma/schema-dev.prisma",
     "prisma:deploy": "prisma migrate deploy --schema=./orchestrator/prisma/schema.prisma",
-    "prisma:deploy:dev": "prisma migrate deploy --schema=./orchestrator/prisma/schema-dev.prisma"
+    "prisma:deploy:dev": "prisma migrate deploy --schema=./orchestrator/prisma/schema-dev.prisma",
+    "prisma:studio": "prisma studio --schema=./orchestrator/prisma/schema.prisma",
+    "prisma:studio:dev": "prisma studio --schema=./orchestrator/prisma/schema-dev.prisma"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.8.3",
