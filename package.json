@@ -24,7 +24,9 @@
     "prepare": "husky",
     "format": "biome format src/ --fix",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org usherlabs --project verity-move-oracles ./dist && sentry-cli sourcemaps upload --org usherlabs --project verity-move-oracles ./dist",
-    "test": "jest --runInBand "
+    "test": "jest --runInBand ",
+    "prisma:deploy": "prisma migrate deploy --schema=./orchestrator/prisma/schema.prisma",
+    "prisma:deploy:dev": "prisma migrate deploy --schema=./orchestrator/prisma/schema-dev.prisma"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.8.3",
