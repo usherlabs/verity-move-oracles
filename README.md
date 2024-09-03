@@ -68,6 +68,7 @@ Run the Prisma migration to update your database schema according to your models
 **In Production (for PostgreSQL):**
 
 ```bash
+pnpm clean:db
 pnpm prisma:generate
 pnpm prisma:deploy
 ```
@@ -75,6 +76,7 @@ pnpm prisma:deploy
 **In Development (for SQLite):**
 
 ```bash
+pnpm clean:db
 pnpm prisma:generate:dev
 pnpm prisma:deploy:dev
 ```
@@ -116,3 +118,18 @@ Finally, send a new request transaction to have it indexed. Make sure to replace
 ```bash
 rooch move run --function  <contractAddress>::example_caller::request_data --sender-account default --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:<Orchestrator Address>'
 ```
+
+Here's an example of requesting the Twitter Followers Count on a Local Rooch Node:
+
+```bash
+rooch move run --function 0x85859e45551846d9ab8651bb0b6f6e1740c9d758cfda05cfc39d49e2a604d783::example_caller::request_data --sender-account 0x85859e45551846d9ab8651bb0b6f6e1740c9d758cfda05cfc39d49e2a604d783 --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:0x85859e45551846d9ab8651bb0b6f6e1740c9d758cfda05cfc39d49e2a604d783'
+```
+
+To check the state of the response object, use the following command:
+
+```bash
+rooch state -a /object/0x7a01ddf194f8a1c19212d56f747294352bf2e5cf23e6e10e64937aa1955704b0
+```
+
+To confirm the `Request` Object State, use the Object ID generated from the initial transaction to query the state of the response object.
+This allows you to verify that the request was processed successfully and that the response object is correctly stored in the Rooch Network state.
