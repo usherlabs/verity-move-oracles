@@ -12,7 +12,7 @@ datasource db {
 
 model Events{
   id                        String @id @default(cuid())
-  eventHandleId             String
+  eventHandleId             String 
   eventSeq                  Int
   eventType                 String
   eventData                 String

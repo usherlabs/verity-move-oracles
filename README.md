@@ -65,8 +65,18 @@ pnpm install
 
 Run the Prisma migration to update your database schema according to your models.
 
+**In Production (for PostgreSQL):**
+
 ```bash
-npx prisma migrate deploy
+pnpm prisma:generate
+pnpm prisma:deploy
+```
+
+**In Development (for SQLite):**
+
+```bash
+pnpm prisma:generate:dev
+pnpm prisma:deploy:dev
 ```
 
 #### Step 6: Update the .env file with the correct values

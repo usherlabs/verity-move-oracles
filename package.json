@@ -25,6 +25,8 @@
     "format": "biome format src/ --fix",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org usherlabs --project verity-move-oracles ./dist && sentry-cli sourcemaps upload --org usherlabs --project verity-move-oracles ./dist",
     "test": "jest --runInBand ",
+    "prisma:generate": "prisma generate --schema=./orchestrator/prisma/schema.prisma",
+    "prisma:generate:dev": "prisma generate --schema=./orchestrator/prisma/schema-dev.prisma",
     "prisma:deploy": "prisma migrate deploy --schema=./orchestrator/prisma/schema.prisma",
     "prisma:deploy:dev": "prisma migrate deploy --schema=./orchestrator/prisma/schema-dev.prisma"
   },
