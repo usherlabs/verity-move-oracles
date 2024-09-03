@@ -84,7 +84,7 @@ rooch account export --address <Rooch Address>
 ``` 
 
 To connect to the local Rooch node, set `ROOCH_CHAIN_ID` to `"localnet"`.  
-Otherwise, connect to DevNet by setting `ROOCH_CHAIN_ID` to `"devnet"`, or to TestNet by setting `ROOCH_CHAIN_ID` to `"testnet"`.  
+Otherwise, connect to testNet by setting `ROOCH_CHAIN_ID` to `"testnet"`, or to TestNet by setting `ROOCH_CHAIN_ID` to `"testnet"`.  
 Ensure that `ROOCH_ORACLE_ADDRESS` is set to the address of the deployed module, e.g., `"0x85859e45551846d9ab8651bb0b6f6e1740c9d758cfda05cfc39d49e2a604d783"`.
 
 #### Step 7: Run Orchestrator

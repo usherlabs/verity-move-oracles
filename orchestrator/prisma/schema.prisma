@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -21,8 +21,7 @@ model Events{
 
   status                    Int
   retries                   Int
-  response                  String?  //JSON String
-  executedAt                DateTime?
+  response                  String?
   indexedAt                 DateTime  @default(now())
   updateAt                  DateTime  @updatedAt
 
