@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  postgres_db:
+    image: postgres:16
+    hostname: postgres
+    restart: always
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    ports:
+      - "5432:5432"
+    networks:
+      - verify-network
+    volumes:
+      - postgres-db-data:/var/lib/postgresql/data
+
+  orchestrator:
+    build: 
+      dockerfile: ./orch.dockerfile
+      context: .
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    networks:
+      - verify-network
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+    command: >
+      sh -c "
+        npx prisma migrate deploy &&
+        pnpm run start
+      "
+
+volumes:
+  postgres-db-data:
+
+networks:
+  verify-network:
+    driver: bridge
