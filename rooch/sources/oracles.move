@@ -272,7 +272,7 @@ module verity::oracles {
 }
 
 #[test_only]
-module verity_test::test_oracles {
+module verity::test_oracles {
     use std::string;
     use moveos_std::signer;
     use std::option::{Self};
@@ -299,7 +299,7 @@ module verity_test::test_oracles {
         let oracle = signer::address_of(&sig);
         // let recipient = @0x46;
 
-        let request_id =oracles::new_request(http_request, response_pick, oracle, oracles::with_notify(@verity_test,b""));
+        let request_id =oracles::new_request(http_request, response_pick, oracle, oracles::with_notify(@verity,b""));
         request_id
     }
 
