@@ -5,7 +5,7 @@ services:
     image: postgres:16
     hostname: postgres
     restart: always
-    container_name: postgres
+    container_name: verity-move-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -27,6 +27,8 @@ services:
     build: 
       dockerfile: ./orch.dockerfile
       context: .
+    image: orchestrator:move
+    container_name: verity-move-orchestrator
     environment:
       DATABASE_URL: ${DATABASE_URL}
     networks:
