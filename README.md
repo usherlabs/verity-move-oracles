@@ -14,6 +14,8 @@ The first Oracle supported is an Oracle for X (Twitter) data.
 
 ### Rooch Network
 
+[See Video Demo on Testnet](https://www.loom.com/share/72903d5067b14a05989918f2300f4660?sid=6b7886dd-6074-4751-8d8c-609634117982).
+
 Contracts:
 
 - **Testnet**: `0x9a759932a6640790b3e2a5fefdf23917c8830dcd8998fe8af3f3b49b0ab5ca35`
@@ -23,6 +25,8 @@ Oracles:
 - **X (Twitter)**: `0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d`
 
 ## Running with Rooch (Locally)
+
+[See Video Guide for Local Development](https://www.loom.com/share/09f69ebfcf7f4b4899150c4a83e7c704?sid=4ca55c5e-fdf2-4bb7-8401-87af05295362).
 
 ### Prerequisites
 
