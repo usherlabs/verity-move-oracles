@@ -10,7 +10,19 @@ The first Oracle supported is an Oracle for X (Twitter) data.
 - [ ] [Aptos](https://aptosfoundation.org/)
 - [ ] ~Sui~
 
-## Running Rooch orchestrator (Locally)
+## Contracts & Oracles
+
+### Rooch Network
+
+Contracts:
+
+- **Testnet**: `0x9a759932a6640790b3e2a5fefdf23917c8830dcd8998fe8af3f3b49b0ab5ca35`
+
+Oracles:
+
+- **X (Twitter)**: `0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d`
+
+## Running with Rooch (Locally)
 
 ### Prerequisites
 
@@ -125,7 +137,7 @@ Here's an example of requesting the Twitter Followers Count on a Local Rooch Nod
 rooch move run --function 0x85859e45551846d9ab8651bb0b6f6e1740c9d758cfda05cfc39d49e2a604d783::example_caller::request_data --sender-account 0x85859e45551846d9ab8651bb0b6f6e1740c9d758cfda05cfc39d49e2a604d783 --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:0x85859e45551846d9ab8651bb0b6f6e1740c9d758cfda05cfc39d49e2a604d783'
 ```
 
-To check the state of the response object, use the following command:
+To check the state of the response object on a local Rooch node, use the following command:
 
 ```bash
 rooch state -a /object/0x7a01ddf194f8a1c19212d56f747294352bf2e5cf23e6e10e64937aa1955704b0
@@ -133,3 +145,20 @@ rooch state -a /object/0x7a01ddf194f8a1c19212d56f747294352bf2e5cf23e6e10e64937aa
 
 To confirm the `Request` Object State, use the Object ID generated from the initial transaction to query the state of the response object.
 This allows you to verify that the request was processed successfully and that the response object is correctly stored in the Rooch Network state.
+
+## Instructions for Rooch on Test/Dev/Mainnet
+
+An example of requesting the Twitter Followers Count on a Rooch Testnet:
+
+```bash
+rooch move run --function 0x9a759932a6640790b3e2a5fefdf23917c8830dcd8998fe8af3f3b49b0ab5ca35::example_caller::request_data --sender-account 0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d'
+```
+
+To check the state of the response object on testnet, devnet, or mainnet, 
+
+1. Switch to the relevant network using `rooch env switch --alias <NETWORK_ALIAS>`
+2. Use the following command:
+
+```bash
+rooch object --object-ids <OBJECT_ID>
+```
