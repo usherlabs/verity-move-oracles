@@ -340,6 +340,6 @@ module verity::test_oracles {
         fulfil_request(id);
 
         assert!(oracles::get_response(&id) == option::some(string::utf8(b"Hello World")), 99958);
-        assert!(oracles::get_response_status(&id) == (200 as u8), 99959);
+        assert!(oracles::get_response_status(&id) == (200 as u16), 99959);
     }
 }
