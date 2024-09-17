@@ -1,0 +1,63 @@
+
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
+
+name: Node and Rooch Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # env:
+    #   RUST_BACKTRACE=1
+    #   # ROOCH_ORACLE_ADDRESS= ${{ secrets.ROOCH_ORACLE_ADDRESS }}
+    #   # ROOCH_PRIVATE_KEY= ${{ secrets.ROOCH_PRIVATE_KEY }}
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      # - name: Install latest nightly
+      #   uses: actions-rs/toolchain@v1
+      #   with:
+      #       toolchain: nightly
+      #       override: true
+      #       components: rustfmt, clippy
+
+      - name: Download rooch
+        run: |
+          wget https://github.com/rooch-network/rooch/releases/latest/download/rooch-ubuntu-latest.zip
+          echo "Download completed"
+      
+      - name: Install Rooch
+        run: |
+          unzip rooch-ubuntu-latest.zip
+          sudo cp rooch-artifacts/rooch /usr/local/bin
+          rooch --version
+          echo "Installation completed"
+      
+
+      - name: Use Node.js ${{ matrix.node-version }} 🛎️
+        uses: actions/checkout@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          persist-credentials: false
+
+      - name: Install 🔧 dependencies
+        run: npx yarn install
+
+      - name: build
+        run: npx yarn build
+
+      - name: Run rooch test
+        run: |
+          rooch init --config-dir ./${{ runner.temp }} --skip-password --password test
+          rooch move test -p ./rooch --config-dir ./${{ runner.temp }}  --dev -v
+
+      
