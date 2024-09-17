@@ -22,6 +22,10 @@ function isValidJson(jsonString: string): boolean {
   }
 }
 
+function decodeNotifyValue(hex: string): string {
+  return `${hex.slice(0, 66)}${Buffer.from(hex.slice(66), "hex").toString()}`;
+}
+
 export default class RoochIndexer {
   private keyPair: Secp256k1Keypair;
   private orchestrator: string;
@@ -82,6 +86,8 @@ export default class RoochIndexer {
     const client = new RoochClient({
       url: getRoochNodeUrl(this.chainId),
     });
+    log.debug(JSON.stringify({ notify: data.notify }));
+
     const tx = new Transaction();
     tx.callFunction({
       target: `${this.oracleAddress}::oracles::fulfil_request`,
@@ -93,7 +99,21 @@ export default class RoochIndexer {
       signer: this.keyPair,
     });
 
-    log.debug(receipt.execution_info);
+    log.debug(JSON.stringify({ execution_info: receipt.execution_info }));
+
+    if ((data.notify?.value?.vec?.at(0)?.length ?? 0) > 66) {
+      const tx = new Transaction();
+      tx.callFunction({
+        target: decodeNotifyValue(data.notify?.value?.vec?.at(0) ?? ""),
+      });
+
+      const receipt = await client.signAndExecuteTransaction({
+        transaction: tx,
+        signer: this.keyPair,
+      });
+
+      // log.debug(receipt.execution_info);
+    }
     return receipt;
   }
 

@@ -43,7 +43,7 @@ interface VecValue {
 }
 
 export interface IRequestAdded {
-  notify: NotifyValue;
+  notify?: NotifyValue;
   oracle: string;
   params: ParamsValue;
   pick: string;

@@ -35,7 +35,7 @@ module verity::oracles {
         params: HTTPRequest,
         pick: String, // An optional JQ string to pick the value from the response JSON data structure.
         oracle: address,
-        response_status: u8,
+        response_status: u16,
         response: Option<String>
     }
 
@@ -153,7 +153,7 @@ module verity::oracles {
     public entry fun fulfil_request(
         sender: &signer,
         id: ObjectID,
-        response_status: u8,
+        response_status: u16,
         result: String
         // proof: String
     ) {
@@ -184,7 +184,7 @@ module verity::oracles {
     public entry fun test_fulfil_request(
         sender: &signer,
         id: ObjectID,
-        response_status: u8,
+        response_status: u16,
         result: String
         // proof: String
     ) {
@@ -265,7 +265,7 @@ module verity::oracles {
     }
 
     #[view]
-    public fun get_response_status(id: &ObjectID): u8 {
+    public fun get_response_status(id: &ObjectID): u16 {
         let request = borrow_request(id);
         request.response_status
     }
@@ -324,7 +324,7 @@ module verity::test_oracles {
         assert!(oracles::get_request_params_url(&id) == string::utf8(b"https://api.example.com/data"), 99952);
         assert!(oracles::get_request_params_method(&id) == string::utf8(b"GET"), 99953);
         assert!(oracles::get_request_params_body(&id) == string::utf8(b""), 99954);
-        assert!(oracles::get_response_status(&id) ==(0 as u8), 99955);
+        assert!(oracles::get_response_status(&id) ==(0 as u16), 99955);
     }
 
     #[test]

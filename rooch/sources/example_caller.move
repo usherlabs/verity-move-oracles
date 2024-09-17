@@ -44,9 +44,9 @@ module verity_test_foreign_module::example_caller {
     ) {
         let http_request = Oracles::build_request(url, method, headers, body);
 
-        // We're passing the address and function name of the module as the recipient.
+        // We're passing the address and function identifier of the recipient address. in this from <module_name>::<function_name>
         // If you do not want to pay for the Oracle to notify your contract, you can pass in option::none() as the argument.
-        let request_id = Oracles::new_request(http_request, pick, oracle, Oracles::with_notify(@verity_test_foreign_module, b"receive_data"));
+        let request_id = Oracles::new_request(http_request, pick, oracle, Oracles::with_notify(@verity_test_foreign_module, b"example_caller::receive_data"));
         // let no_notify_request_id = Oracles::new_request(http_request, pick, oracle, Oracles::without_notify());
         let params = account::borrow_mut_resource<GlobalParams>(@verity_test_foreign_module);
         vector::push_back(&mut params.pending_requests, request_id);
