@@ -101,18 +101,22 @@ export default class RoochIndexer {
 
     log.debug(JSON.stringify({ execution_info: receipt.execution_info }));
 
-    if ((data.notify?.value?.vec?.at(0)?.length ?? 0) > 66) {
-      const tx = new Transaction();
-      tx.callFunction({
-        target: decodeNotifyValue(data.notify?.value?.vec?.at(0) ?? ""),
-      });
+    try {
+      if ((data.notify?.value?.vec?.at(0)?.length ?? 0) > 66) {
+        const tx = new Transaction();
+        tx.callFunction({
+          target: decodeNotifyValue(data.notify?.value?.vec?.at(0) ?? ""),
+        });
 
-      const receipt = await client.signAndExecuteTransaction({
-        transaction: tx,
-        signer: this.keyPair,
-      });
+        const receipt = await client.signAndExecuteTransaction({
+          transaction: tx,
+          signer: this.keyPair,
+        });
 
-      // log.debug(receipt.execution_info);
+        log.debug(JSON.stringify(receipt));
+      }
+    } catch (err) {
+      log.error(err);
     }
     return receipt;
   }
@@ -160,19 +164,21 @@ export default class RoochIndexer {
         });
       }
 
-      log.debug({ responseData: request.data });
+      log.debug(JSON.stringify({ responseData: request.data }));
       try {
         const result = await run(data.pick, JSON.stringify(request.data), { input: "string" });
-        log.debug({ result });
+        log.debug(JSON.stringify({ result }));
         return { status: request.status, message: result };
       } catch {
         return { status: 409, message: "`Pick` value provided could not be resolved on the returned response" };
       }
       // return { status: request.status, message: result };
     } catch (error: any) {
-      log.debug({
-        error: error.message,
-      });
+      log.debug(
+        JSON.stringify({
+          error: error.message,
+        }),
+      );
 
       if (axios.isAxiosError(error)) {
         // Handle Axios-specific errors
@@ -235,7 +241,7 @@ export default class RoochIndexer {
               },
             });
           } catch (err) {
-            log.error(err);
+            log.error(JSON.stringify({ err }));
             await prismaClient.events.create({
               data: {
                 eventHandleId: event.event_id.event_handle_id,
