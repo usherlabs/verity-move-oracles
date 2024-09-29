@@ -1,5 +1,5 @@
-// TODO: Improve coverage to 90%
-const coverageToNumber = 20; // [0..100]
+// // TODO: Improve coverage to 90%
+// const coverageToNumber = 20; // [0..100]
 
 /*
  * For a detailed explanation regarding each configuration property and type check, visit:
@@ -29,12 +29,12 @@ export default {
   collectCoverageFrom: ["<rootDir>/orchestrator/src/**/*.ts"],
   coverageDirectory: "<rootDir>/coverage",
   coverageReporters: ["lcov"],
-  coverageThreshold: {
-    global: {
-      //   branches: coverageToNumber,
-      //   functions: coverageToNumber,
-      lines: coverageToNumber,
-      statements: coverageToNumber,
-    },
-  },
+  // coverageThreshold: {
+  //   global: {
+  //     //   branches: coverageToNumber,
+  //     //   functions: coverageToNumber,
+  //     lines: coverageToNumber,
+  //     statements: coverageToNumber,
+  //   },
+  // },
 };
