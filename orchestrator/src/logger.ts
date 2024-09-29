@@ -1,7 +1,7 @@
 import { Logger } from "tslog";
 
 const log = new Logger({
-  type: "json", // This will stringify all objects passed in parameters
+  type: process.env.NODE_ENV === "production" ? "json" : "pretty",
 });
 
 export { log };
