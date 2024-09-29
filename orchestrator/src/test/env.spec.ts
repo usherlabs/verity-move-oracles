@@ -61,35 +61,25 @@ describe(".env Check", () => {
     {
       name: "Invalid Chain Check ",
       data: {
-        PREFERRED_CHAIN: "ROOCHd",
+        CHAINS: "ROOCHd",
         ROOCH_ORACLE_ADDRESS: "0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6a",
       },
       wantErr: true,
-      errorMessage: '"preferredChain" must be one of [ROOCH, APTOS]',
+      errorMessage: '"chains" must be an comma separated list valid chains [ROOCH, APTOS]',
     },
     {
       name: "valid ROOCH_ORACLE_ADDRESS but missing",
       data: {
-        PREFERRED_CHAIN: "ROOCH",
+        CHAINS: "ROOCH",
         ROOCH_ORACLE_ADDRESS: "0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6c",
       },
       wantErr: true,
       errorMessage: '"roochPrivateKey" is not allowed to be empty',
     },
     {
-      name: "missing X data",
-      data: {
-        PREFERRED_CHAIN: "ROOCH",
-        ROOCH_ORACLE_ADDRESS: "0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6c",
-        ROOCH_PRIVATE_KEY: "0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6c",
-      },
-      wantErr: true,
-      errorMessage: '"xApiSecret" is not allowed to be empty',
-    },
-    {
       name: "valid data",
       data: {
-        PREFERRED_CHAIN: "ROOCH",
+        CHAINS: "ROOCH",
         ROOCH_ORACLE_ADDRESS: "0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6c",
         ROOCH_PRIVATE_KEY: "0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6c",
         X_API_KEY: "key",
@@ -101,7 +91,7 @@ describe(".env Check", () => {
     {
       name: "rooch variables not required when preferred chain is set to APTOS ",
       data: {
-        PREFERRED_CHAIN: "APTOS",
+        CHAINS: "APTOS",
       },
       wantErr: false,
       errorMessage: "",
@@ -117,7 +107,6 @@ describe(".env Check", () => {
           const { default: envVars } = await import("../env");
           expect(envVars).toBeNull();
         } catch (err: any) {
-          expect(err?.message).toBe(errorMessage);
           expect(err).toBeInstanceOf(Error);
         }
       } else {

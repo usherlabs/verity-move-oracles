@@ -59,6 +59,6 @@ class XfkaTwitter {
   }
 }
 
-export const instance = new XfkaTwitter(env.xApiKey, env.xApiSecret);
+export const instance = new XfkaTwitter(env.integrations.xApiKey, env.integrations.xApiSecret);
 
 export const hosts = ["x.com", "api.x.com", "twitter.com", "api.twitter.com"];

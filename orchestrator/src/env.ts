@@ -48,6 +48,7 @@ interface IEnvVars {
 }
 
 const envVarsSchema = Joi.object({
+  // Chains
   chains: Joi.array()
     .items(
       Joi.string()
@@ -83,9 +84,14 @@ const envVarsSchema = Joi.object({
     }),
     SupportedChain.APTOS,
   ),
-  xApiSecret: Joi.string().required(),
-  xApiKey: Joi.string().required(),
   roochIndexerCron: Joi.string().default("*/5 * * * * *"),
+  aptosIndexerCron: Joi.string().default("*/5 * * * * *"),
+
+  // Integrations
+  xApiSecret: Joi.string().allow("").required(),
+  xApiKey: Joi.string().allow("").required(),
+
+  // Common
   sentryDSN: Joi.string().allow("", null),
   ecdsaPrivateKey: Joi.string().allow("", null),
   batchSize: Joi.number().default(1000),
@@ -105,8 +111,10 @@ export default {
   batchSize: envVars.batchSize,
   ecdsaPrivateKey: envVars.ecdsaPrivateKey,
   sentryDSN: envVars.sentryDSN,
-  xApiSecret: envVars.xApiSecret,
-  xApiKey: envVars.xApiKey,
+  integrations: {
+    xApiSecret: envVars.xApiSecret,
+    xApiKey: envVars.xApiKey,
+  },
   rooch: {
     chainId: envVars.roochChainId,
     oracleAddress: envVars.roochOracleAddress,
