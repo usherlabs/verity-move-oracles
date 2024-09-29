@@ -94,7 +94,7 @@ export default class RoochIndexer {
     const client = new RoochClient({
       url: getRoochNodeUrl(this.chainId),
     });
-    log.debug(JSON.stringify({ notify: data.notify }));
+    log.debug({ notify: data.notify });
 
     const tx = new Transaction();
     tx.callFunction({
@@ -107,7 +107,7 @@ export default class RoochIndexer {
       signer: this.keyPair,
     });
 
-    log.debug(JSON.stringify({ execution_info: receipt.execution_info }));
+    log.debug({ execution_info: receipt.execution_info });
 
     return receipt;
   }
@@ -137,7 +137,7 @@ export default class RoochIndexer {
         signer: this.keyPair,
       });
 
-      log.debug(JSON.stringify({ execution_info: receipt.execution_info }));
+      log.debug({ execution_info: receipt.execution_info });
 
       return receipt;
     }
@@ -197,21 +197,19 @@ export default class RoochIndexer {
         });
       }
 
-      log.debug(JSON.stringify({ responseData: request.data }));
+      log.debug({ responseData: request.data });
       try {
         const result = await run(data.pick, JSON.stringify(request.data), { input: "string" });
-        log.debug(JSON.stringify({ result }));
+        log.debug({ result });
         return { status: request.status, message: result };
       } catch {
         return { status: 409, message: "`Pick` value provided could not be resolved on the returned response" };
       }
       // return { status: request.status, message: result };
     } catch (error: any) {
-      log.debug(
-        JSON.stringify({
-          error: error.message,
-        }),
-      );
+      log.debug({
+        error: error.message,
+      });
 
       if (axios.isAxiosError(error)) {
         // Handle Axios-specific errors
@@ -277,7 +275,7 @@ export default class RoochIndexer {
               },
             });
           } catch (err) {
-            log.error(JSON.stringify({ err }));
+            log.error({ err });
             await prismaClient.events.create({
               data: {
                 eventHandleId: event.event_id.event_handle_id,
