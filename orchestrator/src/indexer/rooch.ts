@@ -145,6 +145,15 @@ export default class RoochIndexer {
     return null;
   }
 
+  /**
+   * Processes the "RequestAdded" event.
+   *
+   * This function validates the request, makes an HTTP request to the specified URL,
+   * and processes the response based on the provided "pick" value.
+   *
+   * @param {IRequestAdded} data - The request data that needs to be processed.
+   * @returns {Promise<{status: number, message: string} | null>} - The status and message of the processed request, or null if the request is not valid.
+   */
   async processRequestAddedEvent(data: IRequestAdded) {
     log.debug("processing request:", data.request_id);
     const token = xInstance.getAccessToken();
