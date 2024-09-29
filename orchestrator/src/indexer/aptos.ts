@@ -2,13 +2,28 @@ import env from "@/env";
 import { hosts as xHosts, instance as xInstance } from "@/integrations/xtwitter";
 import { log } from "@/logger";
 import { type IRequestAdded, type JsonRpcResponse, RequestStatus, type RoochNetwork } from "@/types";
-import { decodeNotifyValue, isValidJson } from "@/util";
 import { Args, RoochClient, Secp256k1Keypair, Transaction, getRoochNodeUrl } from "@roochnetwork/rooch-sdk";
 import axios, { type AxiosResponse } from "axios";
 import { run } from "node-jq";
 import prismaClient from "../../prisma";
 
-const ALLOWED_HOST = [...xHosts];
+const ALLOWED_HOST = xHosts;
+
+function isValidJson(jsonString: string): boolean {
+  if (jsonString.trim().length === 0) {
+    return true;
+  }
+  try {
+    JSON.parse(jsonString);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function decodeNotifyValue(hex: string): string {
+  return `${hex.slice(0, 66)}${Buffer.from(hex.slice(66), "hex").toString()}`;
+}
 
 export default class RoochIndexer {
   private keyPair: Secp256k1Keypair;
@@ -25,14 +40,6 @@ export default class RoochIndexer {
     log.info(`Chain ID: ${this.chainId}`);
     log.info(`Oracle Contract Address: ${this.oracleAddress}`);
     log.info(`Orchestrator Oracle Node Address: ${this.orchestrator}`);
-  }
-
-  applyAuthorizationHeader(hostname: string): string | undefined {
-    if (xHosts.includes(hostname) && xInstance.isInitialized()) {
-      const token = xInstance.getAccessToken();
-      return `Bearer ${token}`;
-    }
-    return undefined;
   }
 
   async fetchEvents<T>(
@@ -148,22 +155,18 @@ export default class RoochIndexer {
    */
   async processRequestAddedEvent(data: IRequestAdded) {
     log.debug("processing request:", data.request_id);
+    const token = xInstance.getAccessToken();
 
     if (data.oracle.toLowerCase() !== this.orchestrator) {
       return null;
     }
     const url = data.params.value.url?.includes("http") ? data.params.value.url : `https://${data.params.value.url}`;
-    let Authorization = undefined;
-
     try {
       const _url = new URL(url);
 
       if (!ALLOWED_HOST.includes(_url.hostname.toLowerCase())) {
         return { status: 406, message: `${_url.hostname} is supposed by this orchestrator` };
       }
-
-      // Apply superimposed authorization headers based on hosts.
-      Authorization = this.applyAuthorizationHeader(_url.hostname.toLowerCase());
     } catch (err) {
       return { status: 406, message: `Invalid Domain Name` };
     }
@@ -178,7 +181,7 @@ export default class RoochIndexer {
           url: url,
           headers: {
             ...JSON.parse(data.params.value.headers),
-            Authorization,
+            Authorization: `Bearer ${token}`,
           },
         });
         // return { status: request.status, message: request.data };
@@ -188,7 +191,7 @@ export default class RoochIndexer {
           data: data.params.value.body,
           url: url,
           headers: {
-            Authorization,
+            Authorization: `Bearer ${token}`,
           },
         });
       }
@@ -223,9 +226,6 @@ export default class RoochIndexer {
     }
   }
 
-  // Filter the events to if they're only relevant to this Oracle (Orchestrator)
-  // Cache the events to local cache for retry in case of downtime.
-  // A separate concurrency process will listen for new events from cache and perform the request -- marking each event as completed when the request is made.
   async run() {
     log.info("Rooch indexer running...", Date.now());
 
@@ -292,5 +292,10 @@ export default class RoochIndexer {
         }
       }),
     );
+    // const newFulfilmentEvents = await this.fetchEvents("FulfilmentAdded");
+
+    // Filter the events to if they're only relevant to this Oracle (Orchestrator)
+    // Cache the events to local cache for retry in case of downtime.
+    // A separate concurrency process will listen for new events from cache and perform the request -- marking each event as completed when the request is made.
   }
 }

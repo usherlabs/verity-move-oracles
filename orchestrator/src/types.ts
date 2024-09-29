@@ -8,9 +8,13 @@ export const ALLOWED_HOST = ["x.com", "api.x.com", "twitter.com", "api.twitter.c
 
 export const RoochNetworkList = ["testnet", "devnet", "localnet"] as const;
 
+export const AptosNetworkList = ["testnet", "mainnet"] as const;
+
 export const ChainList = ["ROOCH", "APTOS"] as const;
 
 export type RoochNetwork = (typeof RoochNetworkList)[number];
+
+export type AptosNetwork = (typeof AptosNetworkList)[number];
 
 export type SupportedChain = (typeof ChainList)[number];
 

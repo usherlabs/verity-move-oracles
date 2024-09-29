@@ -29,9 +29,9 @@ export const cronValidator = (value: string, helpers: Joi.CustomHelpers<any>) =>
 };
 
 /* eslint-disable lint/suspicious/noThenProperty */
-export const isRequiredWhenPreferredChainIs = (schema: Joi.StringSchema<string>, value: string) =>
-  Joi.string().when("preferredChain", {
-    is: value,
+export const isRequiredWhenChainsInclude = (schema: Joi.StringSchema<string>, value: string) =>
+  Joi.string().when("chains", {
+    is: Joi.array().items(Joi.string().valid(value)).has(value),
     then: schema.required(), // 'details' is required if 'status' is 'active'
     otherwise: Joi.string().optional().allow("", null).default(""), // 'details' is optional otherwise
   });

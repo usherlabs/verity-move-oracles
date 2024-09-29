@@ -1,7 +1,7 @@
 import env from "@/env";
 import axios from "axios";
 
-class Twitter {
+class XfkaTwitter {
   private initialized = false;
   private accessToken: string | null = null;
   private SERVER_DOMAIN = "api.twitter.com";
@@ -10,6 +10,17 @@ class Twitter {
     private apiKey: string,
     private apiKeySecret: string,
   ) {}
+
+  isAvailable(): boolean {
+    if (this.apiKey && this.apiKeySecret) {
+      return true;
+    }
+    return false;
+  }
+
+  isInitialized(): boolean {
+    return this.initialized;
+  }
 
   async requestAccessToken() {
     try {
@@ -48,4 +59,6 @@ class Twitter {
   }
 }
 
-export const xInstance = new Twitter(env.xApiKey, env.xApiSecret);
+export const instance = new XfkaTwitter(env.xApiKey, env.xApiSecret);
+
+export const hosts = ["x.com", "api.x.com", "twitter.com", "api.twitter.com"];
