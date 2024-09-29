@@ -82,6 +82,14 @@ export default class RoochIndexer {
     }
   }
 
+  /**
+   * Sends a fulfillment transaction to the Rooch Oracles Contract.
+   *
+   * @param {IRequestAdded} data - The request data that needs to be fulfilled.
+   * @param {number} status - The status of the fulfillment.
+   * @param {string} result - The result of the fulfillment.
+   * @returns {Promise<any>} - The receipt of the transaction.
+   */
   async sendFulfillment(data: IRequestAdded, status: number, result: string) {
     const client = new RoochClient({
       url: getRoochNodeUrl(this.chainId),
@@ -101,24 +109,40 @@ export default class RoochIndexer {
 
     log.debug(JSON.stringify({ execution_info: receipt.execution_info }));
 
-    try {
-      if ((data.notify?.value?.vec?.at(0)?.length ?? 0) > 66) {
-        const tx = new Transaction();
-        tx.callFunction({
-          target: decodeNotifyValue(data.notify?.value?.vec?.at(0) ?? ""),
-        });
-
-        const receipt = await client.signAndExecuteTransaction({
-          transaction: tx,
-          signer: this.keyPair,
-        });
-
-        log.debug(JSON.stringify(receipt));
-      }
-    } catch (err) {
-      log.error(err);
-    }
     return receipt;
+  }
+
+  /**
+   * Sends a notify transaction to the Rooch Oracles Contract.
+   *
+   * This function triggers an on-chain method with no parameters. It decodes the notify value from the provided data
+   * and sends a transaction to the decoded target address.
+   *
+   * @param {IRequestAdded} data - The request data that contains the notify value.
+   * @returns {Promise<any>} - The receipt of the transaction or null if the notify value is invalid.
+   */
+  async sendNotify(data: IRequestAdded) {
+    const client = new RoochClient({
+      url: getRoochNodeUrl(this.chainId),
+    });
+
+    if ((data.notify?.value?.vec?.at(0)?.length ?? 0) > 66) {
+      const tx = new Transaction();
+      tx.callFunction({
+        target: decodeNotifyValue(data.notify?.value?.vec?.at(0) ?? ""),
+      });
+
+      const receipt = await client.signAndExecuteTransaction({
+        transaction: tx,
+        signer: this.keyPair,
+      });
+
+      log.debug(JSON.stringify({ execution_info: receipt.execution_info }));
+
+      return receipt;
+    }
+
+    return null;
   }
 
   async processRequestAddedEvent(data: IRequestAdded) {
@@ -225,7 +249,10 @@ export default class RoochIndexer {
         if (data) {
           try {
             await this.sendFulfillment(event.decoded_event_data.value, data.status, JSON.stringify(data.message));
-            // TODO: Use the notify parameter to send transaction to the contract and function to marked in the request event
+
+            // Send the notify transaction to the contract consuming the oracle request/response data.
+            // await this.sendNotify(event.decoded_event_data.value);
+            // TODO: Commented the sendNotify function for now, as it's exposed to a bug where the on-chain notify function can consume all gas..
 
             await prismaClient.events.create({
               data: {
