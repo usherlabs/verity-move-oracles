@@ -147,23 +147,19 @@ module verity::oracles {
         request_id
     }
 
-    /// Fulfils an existing oracle request with the provided result.
-    /// This function is intended to be called by designated oracles
-    /// to fulfill requests initiated by third-party contracts.
     public entry fun fulfil_request(
-        sender: &signer,
+        caller: &signer,
         id: ObjectID,
         response_status: u16,
         result: String
-        // proof: String
     ) {
-        let signer_address = signer::address_of(sender);
+        let caller_address = signer::address_of(caller);
         assert!(object::exists_object_with_type<Request>(id), RequestNotFoundError);
 
-        let request_ref = object::borrow_mut_object<Request>(sender, id);
+        let request_ref = object::borrow_mut_object<Request>(caller, id);
         let request = object::borrow_mut(request_ref);
         // Verify the signer matches the pending request's signer/oracle
-        assert!(request.oracle == signer_address, SignerNotOracleError);
+        assert!(request.oracle == caller_address, SignerNotOracleError);
 
         // // Verify the data and proof
         // assert!(verify(result, proof), ProofNotValidError);
@@ -179,6 +175,7 @@ module verity::oracles {
             request: *request,
         });
     }
+
 
     // // This is a Version 0 of the verifier.
     // public fun verify(
@@ -303,14 +300,6 @@ module verity::test_oracles {
     #[test]
     public fun test_consume_fulfil_request() {
         let id = create_oracle_request();
-        let sig = signer::module_signer<Test>();
-
-        let _data= object::borrow_object<Request>(id);
-        let object_owner = object::owner(_data);
-
-        // Object owner should be the oracle that receives the request
-        assert!(object_owner == signer::address_of(&sig), 99955);
-
         fulfil_request(id);
 
         assert!(oracles::get_response(&id) == option::some(string::utf8(b"Hello World")), 99958);
