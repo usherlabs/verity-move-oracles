@@ -11,9 +11,11 @@ module verity_test_foreign_module::example_caller {
     use std::option::{Self, Option};
     use verity::oracles::{Self as Oracles};
 
+    //:!>resource
     struct GlobalParams has key {
-      pending_requests: vector<ObjectID>,
+      pending_requests: vector<address>,
     }
+    //<:!:resource
 
     // ? ------ OPTIONAL ------
     // ? This is totally OPTIONAL
@@ -40,7 +42,7 @@ module verity_test_foreign_module::example_caller {
       body: vector<u8>,
       pick: vector<u8>,
       oracle: address
-    ) {
+    ) acquires GlobalParams {
         let http_request = Oracles::build_request(url, method, headers, body);
 
         // If you do not want to pay for the Oracle to notify your contract, you can pass in option::none() as the argument.
@@ -53,7 +55,7 @@ module verity_test_foreign_module::example_caller {
 
     // This notify function is called by the Oracle.
     // ! It must not include parameters, or return arguments.
-    public entry fun receive_data(caller: &signer) {
+    public entry fun receive_data(caller: &signer) acquires GlobalParams {
       let caller_address = signer::address_of(caller);
       let params = borrow_global_mut<GlobalParams>(@verity_test_foreign_module);
       let pending_requests = params.pending_requests;
