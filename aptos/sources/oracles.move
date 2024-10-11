@@ -28,7 +28,7 @@ module verity::oracles {
         body: String,
     }
 
-    struct Request has key, store, copy, drop {
+    struct Request has store, copy, drop {
         params: HTTPRequest,
         pick: String, // An optional JQ string to pick the value from the response JSON data structure.
         oracle: address,
@@ -278,37 +278,36 @@ module verity::test_oracles {
     #[test_only]
     /// Test function to consume the FulfilRequestObject
     public fun fulfil_request(caller: &signer, id: address) {
-        let result = string:utf8(b"Hello World");
-        // let proof = string:utf8(b"");
+        let result = string::utf8(b"Hello World");
+        // let proof = string::utf8(b"");
 
         oracles::fulfil_request(caller, id, 200, result);
     }
 
 
-    #[test]
-    public fun test_view_functions(){
-        let id = create_oracle_request();
-        let sig = signer::module_signer<Test>();
+    #[test(account = 0xA1)]
+    public fun test_view_functions(caller: &signer){
+        let oracle_sig = account::create_signer(0xA2);
+        let id = create_oracle_request(caller, &oracle_sig);
         // Test the Object
 
-        assert!(oracles::get_request_oracle(&id) == signer::address_of(&sig), 99951);
+        assert!(oracles::get_request_oracle(&id) == signer::address_of(&oracle_sig), 99951);
         assert!(oracles::get_request_params_url(&id) == string::utf8(b"https://api.example.com/data"), 99952);
         assert!(oracles::get_request_params_method(&id) == string::utf8(b"GET"), 99953);
         assert!(oracles::get_request_params_body(&id) == string::utf8(b""), 99954);
         assert!(oracles::get_response_status(&id) ==(0 as u16), 99955);
     }
 
-    #[test]
-    public fun test_consume_fulfil_request() {
-        let caller_sig = account::create_signer(0xA1);
+    #[test(account = 0xA1)]
+    public fun test_consume_fulfil_request(caller: &signer) {
         let oracle_sig = account::create_signer(0xA2);
-        let id = create_oracle_request(&caller_sig, &oracle_sig);
+        let id = create_oracle_request(caller, &oracle_sig);
 
         let obj = borrow_global<Request>(id);
         // Owner should be the oracle that receives the request
         assert!(obj.owner == signer::address_of(&oracle_sig), 99955);
 
-        fulfil_request(&caller_sig, id);
+        fulfil_request(caller, id);
 
         assert!(oracles::get_response(&id) == option::some(string::utf8(b"Hello World")), 99958);
         assert!(oracles::get_response_status(&id) == (200 as u16), 99959);

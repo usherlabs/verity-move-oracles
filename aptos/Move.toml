@@ -9,3 +9,7 @@ AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", subdir 
 std = "0x1"
 verity = "_"
 verity_test_foreign_module = "_"
+
+[dev-addresses]
+verity = "0x42"
+verity_test_foreign_module = "0x43"
