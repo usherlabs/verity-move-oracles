@@ -7,10 +7,10 @@
 // The system manages pending requests and emits events
 // for both new requests and fulfilled requests.
 module verity::oracles {
-    use aptos_framework::object::{Self, Object};
+    use aptos_framework::object;
     use std::signer;
     use std::vector;
-    use std::string::{Self, String};
+    use std::string::{String};
     use std::option::{Self, Option};
     use std::event;
     use std::bcs;
@@ -158,18 +158,18 @@ module verity::oracles {
     /// This function is intended to be called by designated oracles
     /// to fulfill requests initiated by third-party contracts.
     public entry fun fulfil_request(
-        sender: &signer,
+        caller: &signer,
         id: address,
         response_status: u16,
         result: String
         // proof: String
     ) acquires Request {
-        let signer_address = signer::address_of(sender);
+        let caller_address = signer::address_of(caller);
         assert!(exists<Request>(id), RequestNotFoundError);
 
         let request = borrow_global_mut<Request>(id);
         // Verify the signer matches the pending request's signer/oracle
-        assert!(request.oracle == signer_address, SignerNotOracleError);
+        assert!(request.oracle == caller_address, SignerNotOracleError);
 
         // // Verify the data and proof
         // assert!(verify(result, proof), ProofNotValidError);
@@ -196,6 +196,12 @@ module verity::oracles {
     // }
 
     // ------------ HELPERS ------------
+    #[view]
+    public fun get_request_oracle(id: address): address acquires Request {
+        let request = borrow_global<Request>(id);
+        request.oracle
+    }
+
     #[view]
     public fun get_request_pick(id: address): String acquires Request {
         let request = borrow_global<Request>(id);
@@ -244,9 +250,8 @@ module verity::test_oracles {
     use std::signer;
     use std::option::{Self};
     use std::string;
-    use verity::oracles::{Self,Request};
-    use aptos_framework::object::{Self};
-    use aptos_framework::account;
+    use verity::oracles::{Self, Request};
+    use aptos_framework::create_signer::create_signer;
 
     #[test_only]
     // Test for creating a new request
@@ -263,7 +268,7 @@ module verity::test_oracles {
         let oracle_address = signer::address_of(oracle);
         // let recipient = @0x46;
 
-        let request_id = oracles::new_request(caller, http_request, response_pick, oracle, oracles::with_notify(@verity, b""));
+        let request_id = oracles::new_request(caller, http_request, response_pick, oracle_address, oracles::with_notify(@verity, b""));
         request_id
     }
 
@@ -277,29 +282,24 @@ module verity::test_oracles {
     }
 
 
-    #[test(account = 0xA1)]
-    public fun test_view_functions(caller: &signer){
-        let oracle_sig = account::create_signer(0xA2);
-        let id = create_oracle_request(caller, &oracle_sig);
+    #[test(caller = @0xA1, oracle = @0xA2)]
+    public fun test_view_functions(caller: &signer, oracle: &signer){
+        let id = create_oracle_request(caller, oracle);
         // Test the Object
 
-        assert!(oracles::get_request_oracle(id) == signer::address_of(&oracle_sig), 99951);
+        assert!(oracles::get_request_oracle(id) == signer::address_of(oracle), 99951);
         assert!(oracles::get_request_params_url(id) == string::utf8(b"https://api.example.com/data"), 99952);
         assert!(oracles::get_request_params_method(id) == string::utf8(b"GET"), 99953);
         assert!(oracles::get_request_params_body(id) == string::utf8(b""), 99954);
         assert!(oracles::get_response_status(id) ==(0 as u16), 99955);
     }
 
-    #[test(account = 0xA1)]
-    public fun test_consume_fulfil_request(caller: &signer) {
-        let oracle_sig = account::create_signer(0xA2);
-        let id = create_oracle_request(caller, &oracle_sig);
+    #[test(caller = @0xA1, oracle = @0xA2)]
+    public fun test_consume_fulfil_request(caller: &signer, oracle: &signer){
+        let id = create_oracle_request(caller, oracle);
 
-        let obj = borrow_global<Request>(id);
-        // Owner should be the oracle that receives the request
-        assert!(obj.owner == signer::address_of(&oracle_sig), 99955);
-
-        fulfil_request(caller, id);
+        // * This test fulfil passes the oracle as the caller to the fulfil mechanism
+        fulfil_request(oracle, id);
 
         assert!(oracles::get_response(id) == option::some(string::utf8(b"Hello World")), 99958);
         assert!(oracles::get_response_status(id) == (200 as u16), 99959);
