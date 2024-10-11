@@ -157,7 +157,7 @@ module verity::oracles {
         result: String
         // proof: String
     ) {
-        let signer_address = tx_context::sender();
+        let signer_address = signer::address_of(sender);
         assert!(object::exists_object_with_type<Request>(id), RequestNotFoundError);
 
         let request_ref = object::borrow_mut_object<Request>(sender, id);
@@ -271,7 +271,7 @@ module verity::test_oracles {
         let oracle = signer::address_of(&sig);
         // let recipient = @0x46;
 
-        let request_id =oracles::new_request(http_request, response_pick, oracle, oracles::with_notify(@verity,b""));
+        let request_id = oracles::new_request(http_request, response_pick, oracle, oracles::with_notify(@verity,b""));
         request_id
     }
 
