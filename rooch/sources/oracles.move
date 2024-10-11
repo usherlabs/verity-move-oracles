@@ -219,6 +219,7 @@ module verity::oracles {
         request.params.method
     }
 
+    #[view]
     public fun get_request_params_headers(id: &ObjectID): String {
         let request = borrow_request(id);
         request.params.headers

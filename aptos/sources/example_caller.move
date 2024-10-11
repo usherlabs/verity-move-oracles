@@ -4,11 +4,12 @@
 // ? This module is an example caller used to demonstrate how to deploy Contracts on Rooch that integrate with Verity Move Oracles.
 // ? Please keep aware of the OPTIONAL section in this module.
 module verity_test_foreign_module::example_caller {
-    use aptos_framework::event::{EventHandle, emit_event};
     use aptos_framework::object::{Self, Object};
     use std::signer;
     use std::vector;
+    use std::string::{Self, String};
     use std::option::{Self, Option};
+    use std::event;
     use verity::oracles::{Self as Oracles};
 
     //:!>resource
@@ -19,7 +20,8 @@ module verity_test_foreign_module::example_caller {
 
     // ? ------ OPTIONAL ------
     // ? This is totally OPTIONAL
-    struct RequestFulfilledEvent has copy, drop {
+    #[event]
+    struct RequestFulfilledEvent has drop, store {
       request_url: String,
       request_method: String,
       response: Option<String>,
@@ -29,18 +31,18 @@ module verity_test_foreign_module::example_caller {
     // Initiate the module with an empty vector of pending requests
     // Requests are managed in the caller to prevent other modules from impersonating the calling module, and spoofing new data.
     fun init_module(account: &signer){
-      move_to(&account, GlobalParams {
-          pending_requests: vector::empty<ObjectID>()
+      move_to(account, GlobalParams {
+          pending_requests: vector::empty<address>()
       });
     }
 
     public entry fun request_data(
       caller: &signer,
-      url: vector<u8>,
-      method: vector<u8>,
-      headers: vector<u8>,
-      body: vector<u8>,
-      pick: vector<u8>,
+      url: String,
+      method: String,
+      headers: String,
+      body: String,
+      pick: String,
       oracle: address
     ) acquires GlobalParams {
         let http_request = Oracles::build_request(url, method, headers, body);
@@ -62,7 +64,8 @@ module verity_test_foreign_module::example_caller {
 
       let i = 0;
       while (i < vector::length(&pending_requests)) {
-          let request_id = vector::borrow(&pending_requests, i);
+          let request_id_ref = vector::borrow(&pending_requests, i);
+          let request_id = *request_id_ref;
           // Remove the fulfilled request from the pending_requests vector
           // This ensures unfulfilled requests are retained in the vector
           if (option::is_some(&Oracles::get_response(request_id))) {
@@ -77,8 +80,7 @@ module verity_test_foreign_module::example_caller {
               let request_method = Oracles::get_request_params_method(request_id);
               let response = Oracles::get_response(request_id);
               // For each fulfilment, emit an event
-              let event_handle = EventHandle::new<RequestFulfilledEvent>(caller_address);
-              emit_event<RequestFulfilledEvent>(&event_handle, RequestFulfilledEvent {
+              event::emit(RequestFulfilledEvent {
                 request_url,
                 request_method,
                 response,

@@ -7,12 +7,13 @@
 // The system manages pending requests and emits events
 // for both new requests and fulfilled requests.
 module verity::oracles {
-    use aptos_framework::event::{EventHandle, emit_event};
     use aptos_framework::object::{Self, Object};
     use std::signer;
     use std::vector;
     use std::string::{Self, String};
     use std::option::{Self, Option};
+    use std::event;
+    use std::bcs;
 
     const RequestNotFoundError: u64 = 1001;
     const SignerNotOracleError: u64 = 1002;
@@ -28,7 +29,7 @@ module verity::oracles {
         body: String,
     }
 
-    struct Request has store, copy, drop {
+    struct Request has key, store, copy, drop {
         params: HTTPRequest,
         pick: String, // An optional JQ string to pick the value from the response JSON data structure.
         oracle: address,
@@ -44,7 +45,9 @@ module verity::oracles {
     //<:!:resource
 
     // -------- Events --------
-    struct RequestAdded {
+    #[event]
+    struct RequestAdded has drop, store {
+        creator: address,
         params: HTTPRequest,
         pick: String, // An optional JQ string to pick the value from the response JSON data structure.
         oracle: address,
@@ -52,14 +55,15 @@ module verity::oracles {
         request_id: address
     }
 
-    struct Fulfilment has copy, drop {
-        request: EventHandle<Request>,
+    #[event]
+    struct Fulfilment has drop, store {
+        request: Request,
     }
     // ------------------------
 
     fun init_module(account: &signer) {
-        move_to(&account, GlobalParams {
-            owner,
+        move_to(account, GlobalParams {
+            owner: signer::address_of(account),
         });
     }
 
@@ -94,7 +98,7 @@ module verity::oracles {
         notify_function: vector<u8>
     ): Option<vector<u8>> {
         let res = vector::empty<u8>();
-        vector::append(&mut res, address::to_bytes(&notify_address));
+        vector::append(&mut res, bcs::to_bytes(&notify_address));
         vector::append(&mut res, b"::"); // delimiter
         vector::append(&mut res, notify_function);
         option::some(res)
@@ -133,15 +137,14 @@ module verity::oracles {
         let request_object = object::object_from_constructor_ref<Request>(&constructor_ref);
         object::transfer(caller, request_object, oracle);
 
-        let request_id = object::id(&request_object);
+        let request_id = signer::address_of(&object_signer);
 
         // TODO: Move gas from recipient to module account
 
         // Emit event
-        let event_handle = EventHandle::new<RequestAdded>(caller_address);
-        emit_event<RequestAdded>(&event_handle, RequestAdded {
+        event::emit(RequestAdded {
             request_id,
-            caller: caller_address,
+            creator: caller_address,
             params,
             pick,
             oracle,
@@ -160,7 +163,7 @@ module verity::oracles {
         response_status: u16,
         result: String
         // proof: String
-    ) {
+    ) acquires Request {
         let signer_address = signer::address_of(sender);
         assert!(exists<Request>(id), RequestNotFoundError);
 
@@ -178,8 +181,7 @@ module verity::oracles {
         // TODO: Move gas from module escrow to Oracle
 
         // Emit fulfil event
-        let event_handle = EventHandle::new<Fulfilment>(signer_address);
-        emit_event<Fulfilment>(&event_handle, Fulfilment {
+        event::emit(Fulfilment {
             request: *request,
         });
     }
@@ -194,55 +196,45 @@ module verity::oracles {
     // }
 
     // ------------ HELPERS ------------
-    fun borrow_request(id: &address): &Request {
-        let object = borrow_global<Request>(*id);
-        object
-    }
-
     #[view]
-    public fun get_request_oracle(id: &address): address {
-        let request = borrow_request(id);
-        request.oracle
-    }
-
-    #[view]
-    public fun get_request_pick(id: &address): String {
-        let request = borrow_request(id);
+    public fun get_request_pick(id: address): String acquires Request {
+        let request = borrow_global<Request>(id);
         request.pick
     }
 
     #[view]
-    public fun get_request_params_url(id: &address): String {
-        let request = borrow_request(id);
+    public fun get_request_params_url(id: address): String acquires Request {
+        let request = borrow_global<Request>(id);
         request.params.url
     }
 
     #[view]
-    public fun get_request_params_method(id: &address): String {
-        let request = borrow_request(id);
+    public fun get_request_params_method(id: address): String acquires Request {
+        let request = borrow_global<Request>(id);
         request.params.method
     }
 
-    public fun get_request_params_headers(id: &address): String {
-        let request = borrow_request(id);
+    #[view]
+    public fun get_request_params_headers(id: address): String acquires Request {
+        let request = borrow_global<Request>(id);
         request.params.headers
     }
 
     #[view]
-    public fun get_request_params_body(id: &address): String {
-        let request = borrow_request(id);
+    public fun get_request_params_body(id: address): String acquires Request {
+        let request = borrow_global<Request>(id);
         request.params.body
     }
 
     #[view]
-    public fun get_response(id: &address): Option<String> {
-        let request = borrow_request(id);
+    public fun get_response(id: address): Option<String> acquires Request {
+        let request = borrow_global<Request>(id);
         request.response
     }
 
     #[view]
-    public fun get_response_status(id: &address): u16 {
-        let request = borrow_request(id);
+    public fun get_response_status(id: address): u16 acquires Request {
+        let request = borrow_global<Request>(id);
         request.response_status
     }
 }
@@ -291,11 +283,11 @@ module verity::test_oracles {
         let id = create_oracle_request(caller, &oracle_sig);
         // Test the Object
 
-        assert!(oracles::get_request_oracle(&id) == signer::address_of(&oracle_sig), 99951);
-        assert!(oracles::get_request_params_url(&id) == string::utf8(b"https://api.example.com/data"), 99952);
-        assert!(oracles::get_request_params_method(&id) == string::utf8(b"GET"), 99953);
-        assert!(oracles::get_request_params_body(&id) == string::utf8(b""), 99954);
-        assert!(oracles::get_response_status(&id) ==(0 as u16), 99955);
+        assert!(oracles::get_request_oracle(id) == signer::address_of(&oracle_sig), 99951);
+        assert!(oracles::get_request_params_url(id) == string::utf8(b"https://api.example.com/data"), 99952);
+        assert!(oracles::get_request_params_method(id) == string::utf8(b"GET"), 99953);
+        assert!(oracles::get_request_params_body(id) == string::utf8(b""), 99954);
+        assert!(oracles::get_response_status(id) ==(0 as u16), 99955);
     }
 
     #[test(account = 0xA1)]
@@ -309,7 +301,7 @@ module verity::test_oracles {
 
         fulfil_request(caller, id);
 
-        assert!(oracles::get_response(&id) == option::some(string::utf8(b"Hello World")), 99958);
-        assert!(oracles::get_response_status(&id) == (200 as u16), 99959);
+        assert!(oracles::get_response(id) == option::some(string::utf8(b"Hello World")), 99958);
+        assert!(oracles::get_response_status(id) == (200 as u16), 99959);
     }
 }
