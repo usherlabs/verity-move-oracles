@@ -4,10 +4,8 @@
 // ? This module is an example caller used to demonstrate how to deploy Contracts on Rooch that integrate with Verity Move Oracles.
 // ? Please keep aware of the OPTIONAL section in this module.
 module verity_test_foreign_module::example_caller {
-    use aptos_framework::object::{Self, Object};
-    use std::signer;
     use std::vector;
-    use std::string::{Self, String};
+    use std::string::{String};
     use std::option::{Self, Option};
     use std::event;
     use verity::oracles::{Self as Oracles};
@@ -57,8 +55,7 @@ module verity_test_foreign_module::example_caller {
 
     // This notify function is called by the Oracle.
     // ! It must not include parameters, or return arguments.
-    public entry fun receive_data(caller: &signer) acquires GlobalParams {
-      let caller_address = signer::address_of(caller);
+    public entry fun receive_data() acquires GlobalParams {
       let params = borrow_global_mut<GlobalParams>(@verity_test_foreign_module);
       let pending_requests = params.pending_requests;
 

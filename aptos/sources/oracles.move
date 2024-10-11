@@ -250,8 +250,7 @@ module verity::test_oracles {
     use std::signer;
     use std::option::{Self};
     use std::string;
-    use verity::oracles::{Self, Request};
-    use aptos_framework::create_signer::create_signer;
+    use verity::oracles;
 
     #[test_only]
     // Test for creating a new request
