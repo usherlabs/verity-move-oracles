@@ -7,14 +7,10 @@
 // The system manages pending requests and emits events
 // for both new requests and fulfilled requests.
 module verity::oracles {
-    use moveos_std::event;
-    use moveos_std::tx_context;
-    use moveos_std::signer;
-    use moveos_std::account;
-    use moveos_std::address;
-    use moveos_std::object::{Self, ObjectID};
+    use aptos_framework::event::{EventHandle, emit_event};
+    use aptos_framework::object::{Self, Object};
+    use std::signer;
     use std::vector;
-    use std::string::String;
     use std::option::{Self, Option};
 
     const RequestNotFoundError: u64 = 1001;
@@ -25,18 +21,18 @@ module verity::oracles {
     // Struct to represent HTTP request parameters
     // Designed to be imported by third-party contracts
     struct HTTPRequest has store, copy, drop {
-        url: String,
-        method: String,
-        headers: String,
-        body: String,
+        url: vector<u8>,
+        method: vector<u8>,
+        headers: vector<u8>,
+        body: vector<u8>,
     }
 
     struct Request has key, store, copy, drop {
         params: HTTPRequest,
-        pick: String, // An optional JQ string to pick the value from the response JSON data structure.
+        pick: vector<u8>, // An optional JQ string to pick the value from the response JSON data structure.
         oracle: address,
         response_status: u16,
-        response: Option<String>
+        response: Option<vector<u8>>
     }
 
     // Global params for the oracle system
@@ -45,45 +41,41 @@ module verity::oracles {
     }
 
     // -------- Events --------
-    struct RequestAdded has copy, drop {
+    struct RequestAdded {
         params: HTTPRequest,
-        pick: String, // An optional JQ string to pick the value from the response JSON data structure.
+        pick: vector<u8>, // An optional JQ string to pick the value from the response JSON data structure.
         oracle: address,
         notify: Option<vector<u8>>,
-        request_id: ObjectID
+        request_id: address
     }
 
     struct Fulfilment has copy, drop {
-        request: Request,
+        request: EventHandle<Request>,
     }
     // ------------------------
 
-    fun init() {
-        let module_signer = signer::module_signer<GlobalParams>();
-        let owner = tx_context::sender();
-
-        account::move_resource_to(&module_signer, GlobalParams {
+    fun init_module(account: &signer) {
+        move_to(&account, GlobalParams {
             owner,
         });
     }
 
     // Only owner can set the verifier
-    // TODO: Move this out into it's own ownable module.
     public entry fun set_owner(
+        owner: &signer,
         new_owner: address
     ) {
-        let owner = tx_context::sender();
-        let params = account::borrow_mut_resource<GlobalParams>(@verity);
-        assert!(params.owner == owner, OnlyOwnerError);
+        let params = borrow_global_mut<GlobalParams>(@verity);
+        assert!(params.owner == signer::address_of(owner), OnlyOwnerError);
         params.owner = new_owner;
     }
 
     // Builds a request object from the provided parameters
     public fun build_request(
-        url: String,
-        method: String,
-        headers: String,
-        body: String
+        url: vector<u8>,
+        method: vector<u8>,
+        headers: vector<u8>,
+        body: vector<u8>
     ): HTTPRequest {
         HTTPRequest {
             url,
@@ -113,35 +105,44 @@ module verity::oracles {
     /// This function is intended to be called by third-party contracts
     /// to initiate off-chain data requests.
     public fun new_request(
+        caller: &signer,
         params: HTTPRequest,
-        pick: String,
+        pick: vector<u8>,
         oracle: address,
         notify: Option<vector<u8>>
-    ): ObjectID {
-        // let recipient = tx_context::sender();
-
+    ): address {
         // TODO: Ensure that the recipient has enough gas for the request.
 
         // Create new request object
-        let request = object::new(Request {
+        let caller_address = signer::address_of(caller);
+        let constructor_ref = object::create_object(caller_address);
+        let object_signer = object::generate_signer(&constructor_ref);
+
+        // Set up the object by creating a request resource in it.
+        move_to(&object_signer, Request {
             params,
             pick,
             oracle,
             response_status: 0,
             response: option::none(),
         });
-        let request_id = object::id(&request);
-        object::transfer(request, oracle); // transfer to oracle to ensure permission
+        // Transfer ownership to oracle
+        let request_object = object::object_from_constructor_ref<Request>(&constructor_ref);
+        object::transfer(caller, request_object, oracle);
+
+        let request_id = object::id(&request_object);
 
         // TODO: Move gas from recipient to module account
 
         // Emit event
-        event::emit(RequestAdded {
+        let event_handle = EventHandle::new<RequestAdded>(caller_address);
+        emit_event<RequestAdded>(&event_handle, RequestAdded {
+            request_id,
+            caller: caller_address,
             params,
             pick,
             oracle,
             notify,
-            request_id
         });
 
         request_id
@@ -152,16 +153,15 @@ module verity::oracles {
     /// to fulfill requests initiated by third-party contracts.
     public entry fun fulfil_request(
         sender: &signer,
-        id: ObjectID,
+        id: address,
         response_status: u16,
-        result: String
-        // proof: String
+        result: vector<u8>
+        // proof: vector<u8>
     ) {
-        let signer_address = tx_context::sender();
-        assert!(object::exists_object_with_type<Request>(id), RequestNotFoundError);
+        let signer_address = signer::address_of(sender);
+        assert!(exists<Request>(id), RequestNotFoundError);
 
-        let request_ref = object::borrow_mut_object<Request>(sender, id);
-        let request = object::borrow_mut(request_ref);
+        let request = borrow_global_mut<Request>(id);
         // Verify the signer matches the pending request's signer/oracle
         assert!(request.oracle == signer_address, SignerNotOracleError);
 
@@ -175,7 +175,8 @@ module verity::oracles {
         // TODO: Move gas from module escrow to Oracle
 
         // Emit fulfil event
-        event::emit(Fulfilment {
+        let event_handle = EventHandle::new<Fulfilment>(signer_address);
+        emit_event<Fulfilment>(&event_handle, Fulfilment {
             request: *request,
         });
     }
@@ -190,54 +191,54 @@ module verity::oracles {
     // }
 
     // ------------ HELPERS ------------
-    fun borrow_request(id: &ObjectID): &Request {
-        let ref = object::borrow_object<Request>(*id);
-        object::borrow(ref)
+    fun borrow_request(id: &address): &Request {
+        let object = borrow_global<Request>(*id);
+        object
     }
 
     #[view]
-    public fun get_request_oracle(id: &ObjectID): address {
+    public fun get_request_oracle(id: &address): address {
         let request = borrow_request(id);
         request.oracle
     }
 
     #[view]
-    public fun get_request_pick(id: &ObjectID): String {
+    public fun get_request_pick(id: &address): vector<u8> {
         let request = borrow_request(id);
         request.pick
     }
 
     #[view]
-    public fun get_request_params_url(id: &ObjectID): String {
+    public fun get_request_params_url(id: &address): vector<u8> {
         let request = borrow_request(id);
         request.params.url
     }
 
     #[view]
-    public fun get_request_params_method(id: &ObjectID): String {
+    public fun get_request_params_method(id: &address): vector<u8> {
         let request = borrow_request(id);
         request.params.method
     }
 
-    public fun get_request_params_headers(id: &ObjectID): String {
+    public fun get_request_params_headers(id: &address): vector<u8> {
         let request = borrow_request(id);
         request.params.headers
     }
 
     #[view]
-    public fun get_request_params_body(id: &ObjectID): String {
+    public fun get_request_params_body(id: &address): vector<u8> {
         let request = borrow_request(id);
         request.params.body
     }
 
     #[view]
-    public fun get_response(id: &ObjectID): Option<String> {
+    public fun get_response(id: &address): Option<vector<u8>> {
         let request = borrow_request(id);
         request.response
     }
 
     #[view]
-    public fun get_response_status(id: &ObjectID): u16 {
+    public fun get_response_status(id: &address): u16 {
         let request = borrow_request(id);
         request.response_status
     }
@@ -245,44 +246,38 @@ module verity::oracles {
 
 #[test_only]
 module verity::test_oracles {
-    use std::string;
-    use moveos_std::signer;
+    use std::signer;
     use std::option::{Self};
     use verity::oracles::{Self,Request};
-    use moveos_std::object::{Self,ObjectID};
-
-
-    struct Test has key {
-    }
+    use aptos_framework::object::{Self};
+    use aptos_framework::account;
 
     #[test_only]
     // Test for creating a new request
-    public fun create_oracle_request(): ObjectID {
-        let url = string::utf8(b"https://api.example.com/data");
-        let method = string::utf8(b"GET");
-        let headers = string::utf8(b"Content-Type: application/json\nUser-Agent: MoveClient/1.0");
-        let body = string::utf8(b"");
+    public fun create_oracle_request(caller: &signer, oracle: &signer): address {
+        let url = b"https://api.example.com/data";
+        let method = b"GET";
+        let headers = b"Content-Type: application/json\nUser-Agent: MoveClient/1.0";
+        let body = b"";
 
         let http_request = oracles::build_request(url, method, headers, body);
 
-        let response_pick = string::utf8(b"");
-        let sig = signer::module_signer<Test>();
+        let response_pick = b"";
 
-        let oracle = signer::address_of(&sig);
+        let oracle_address = signer::address_of(oracle);
         // let recipient = @0x46;
 
-        let request_id =oracles::new_request(http_request, response_pick, oracle, oracles::with_notify(@verity,b""));
+        let request_id = oracles::new_request(caller, http_request, response_pick, oracle, oracles::with_notify(@verity, b""));
         request_id
     }
 
     #[test_only]
     /// Test function to consume the FulfilRequestObject
-    public fun fulfil_request(id: ObjectID) {
-        let result = string::utf8(b"Hello World");
-        // let proof = string::utf8(b"");
+    public fun fulfil_request(caller: &signer, id: address) {
+        let result = b"Hello World";
+        // let proof = b"";
 
-        let sig = signer::module_signer<Test>();
-        oracles::fulfil_request(&sig, id, 200, result);
+        oracles::test_fulfil_request(caller, id, 200, result);
     }
 
 
@@ -293,26 +288,25 @@ module verity::test_oracles {
         // Test the Object
 
         assert!(oracles::get_request_oracle(&id) == signer::address_of(&sig), 99951);
-        assert!(oracles::get_request_params_url(&id) == string::utf8(b"https://api.example.com/data"), 99952);
-        assert!(oracles::get_request_params_method(&id) == string::utf8(b"GET"), 99953);
-        assert!(oracles::get_request_params_body(&id) == string::utf8(b""), 99954);
+        assert!(oracles::get_request_params_url(&id) == b"https://api.example.com/data", 99952);
+        assert!(oracles::get_request_params_method(&id) == b"GET", 99953);
+        assert!(oracles::get_request_params_body(&id) == b"", 99954);
         assert!(oracles::get_response_status(&id) ==(0 as u16), 99955);
     }
 
     #[test]
     public fun test_consume_fulfil_request() {
-        let id = create_oracle_request();
-        let sig = signer::module_signer<Test>();
+        let caller_sig = account::create_signer(0xA1);
+        let oracle_sig = account::create_signer(0xA2);
+        let id = create_oracle_request(&caller_sig, &oracle_sig);
 
-        let _data= object::borrow_object<Request>(id);
-        let object_owner = object::owner(_data);
-
-        // Object owner should be the oracle that receives the request
-        assert!(object_owner == signer::address_of(&sig), 99955);
+        let obj = borrow_global<Request>(id);
+        // Owner should be the oracle that receives the request
+        assert!(obj.owner == signer::address_of(&oracle_sig), 99955);
 
         fulfil_request(id);
 
-        assert!(oracles::get_response(&id) == option::some(string::utf8(b"Hello World")), 99958);
+        assert!(oracles::get_response(&id) == option::some(b"Hello World"), 99958);
         assert!(oracles::get_response_status(&id) == (200 as u16), 99959);
     }
 }
