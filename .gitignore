@@ -133,3 +133,6 @@ prisma/.db*
 orchestrator/prisma/.db
 orchestrator/prisma/.db*
 .infisical.json
+
+# Aptos
+.aptos
