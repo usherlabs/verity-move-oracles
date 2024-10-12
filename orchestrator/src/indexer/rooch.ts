@@ -32,6 +32,18 @@ export default class RoochIndexer extends Indexer {
     return `ROOCH-${this.chainId}`;
   }
 
+  /**
+   * Fetches a list of RequestAdded events based on the provided cursor.
+   *
+   * This asynchronous function retrieves RequestAdded events from an API endpoint,
+   * using pagination to handle large datasets efficiently. It supports both
+   * forward and backward pagination.
+   *
+   * @param {null | number | string} [cursor] - Optional cursor for pagination.
+   *     Can be null (for initial fetch), a timestamp number, or a string ID.
+   * @returns {Promise<ProcessedRequestAdded<any>[]>} A promise that resolves to
+   *     an array of ProcessedRequestAdded objects, representing the fetched events.
+   */
   async fetchRequestAddedEvents(cursor: null | number | string = null): Promise<ProcessedRequestAdded<any>[]> {
     try {
       const response = await axios.post(

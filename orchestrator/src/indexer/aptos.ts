@@ -22,6 +22,16 @@ export default class AptosIndexer {
     return `APTOS-${this.chainId}`;
   }
 
+  /**
+   * Fetches a list of transactions based on the provided transaction IDs.
+   *
+   * This asynchronous function takes an array of transaction IDs, makes API calls
+   * to retrieve the corresponding Aptos block metadata transactions, and returns
+   * the collected data.
+   *
+   * @param {number[]} transactionIDs - An array of transaction IDs to fetch.
+   * @returns {Promise<AptosBlockMetadataTransaction[]>} A promise that resolves to an array of Aptos block metadata transactions.
+   */
   async fetchTransactionList(transactionIDs: number[]): Promise<AptosBlockMetadataTransaction[]> {
     return await Promise.all(
       transactionIDs.map(async (transaction) => {
@@ -37,6 +47,18 @@ export default class AptosIndexer {
     );
   }
 
+  /**
+   * Fetches a list of RequestAdded events based on the provided cursor.
+   *
+   * This asynchronous function retrieves RequestAdded events from an API endpoint,
+   * using pagination to handle large datasets efficiently. It supports both
+   * forward and backward pagination.
+   *
+   * @param {null | number | string} [cursor] - Optional cursor for pagination.
+   *     Can be null (for initial fetch), a timestamp number, or a string ID.
+   * @returns {Promise<ProcessedRequestAdded<any>[]>} A promise that resolves to
+   *     an array of ProcessedRequestAdded objects, representing the fetched events.
+   */
   async fetchRequestAddedEvents(cursor: null | number | string = null): Promise<ProcessedRequestAdded<any>[]> {
     try {
       const endpoint = `https://aptos-${this.chainId === Network.TESTNET ? "testnet" : "mainnet"}.nodit.io/${process.env.APTOS_RPC_KEY}/v1/graphql`;
@@ -100,6 +122,18 @@ export default class AptosIndexer {
       log.error("Error fetching events", error);
       return [];
     }
+  }
+
+  /**
+   * Sends a fulfillment transaction to the Aptos Oracles Contract.
+   *
+   * @param {ProcessedRequestAdded} data - The request data that needs to be fulfilled.
+   * @param {number} status - The status of the fulfillment.
+   * @param {string} result - The result of the fulfillment.
+   * @returns {Promise<any>} - The receipt of the transaction.
+   */
+  async sendFulfillment(data: ProcessedRequestAdded<any>, status: number, result: string) {
+    //TODO:
   }
 
   async run() {
