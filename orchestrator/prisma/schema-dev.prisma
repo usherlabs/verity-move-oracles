@@ -18,6 +18,7 @@ model Events{
   eventData                 String
   eventIndex                String
   decoded_event_data        String  //JSON String
+  chain                     String  @default("ROOCH-testnet")
 
   status                    Int
   retries                   Int
@@ -25,5 +26,5 @@ model Events{
   indexedAt                 DateTime  @default(now())
   updateAt                  DateTime  @updatedAt
 
-  @@index([eventHandleId, eventSeq])
+  @@index([eventHandleId, eventSeq, chain])
 }

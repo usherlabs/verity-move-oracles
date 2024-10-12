@@ -133,6 +133,5 @@ prisma/.db*
 orchestrator/prisma/.db
 orchestrator/prisma/.db*
 .infisical.json
-
-# Aptos
 .aptos
+migration_lock.toml
