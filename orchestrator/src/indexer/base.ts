@@ -1,39 +1,37 @@
 import { log } from "@/logger";
-import type { IRequestAdded } from "@/types";
+import type { ProcessedRequestAdded } from "@/types";
 import { run as jqRun } from "node-jq";
 
-import { xInstance } from "@/request/twitter";
+import { hosts as xHosts, instance as xTwitterInstance } from "@/integrations/xtwitter";
+import { isValidJson } from "@/util";
 import axios, { type AxiosResponse } from "axios";
 
+const ALLOWED_HOST = [...xHosts];
 // TODO: We'll eventually need to framework our this orchestrator and indexer to allow Oracle Operators to create their own connections to various hosts.
-const ALLOWED_HOST = ["x.com", "api.x.com", "twitter.com", "api.twitter.com"];
-
-function isValidJson(jsonString: string): boolean {
-  if (jsonString.trim().length === 0) {
-    return true;
-  }
-  try {
-    JSON.parse(jsonString);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // Abstract base class
 export abstract class Indexer {
-  constructor(private oracleAddress: string) {
+  constructor(
+    protected oracleAddress: string,
+    protected orchestrator: string,
+  ) {
     log.info(`Oracle Contract Address: ${this.oracleAddress}`);
+    log.info(`Orchestrator Oracle Node Address: ${this.orchestrator}`);
   }
 
   // Abstract: Implementation To fetch Data
-  abstract fetchData(): IRequestAdded[];
-
-  // Abstract:Implementation To fetch Orchestrator Address
-  abstract getOrchestrator(): string;
+  abstract fetchRequestAddedEvents<T>(cursor: null | number | string): Promise<ProcessedRequestAdded<T>[]>;
 
   // Abstract: Implementation to send Fulfillment  blockchain fulfillment Request
-  abstract sendFulfillment(data: IRequestAdded, status: number, result: string): void;
+  /**
+   * Sends a fulfillment transaction to on-chain Contract.
+   *
+   * @param {IRequestAdded} data - The request data that needs to be fulfilled.
+   * @param {number} status - The status of the fulfillment.
+   * @param {string} result - The result of the fulfillment.
+   * @returns {Promise<any>} - The receipt of the transaction.
+   */
+  abstract sendFulfillment<T>(data: ProcessedRequestAdded<T>, status: number, result: string): void;
 
   // Abstract: Implementation to get chain identifier. its usually a concat between blockchain and network e.g ("ROOCH-testnet","APTOS-mainnet")
   abstract getChainId(): string;
@@ -42,14 +40,30 @@ export abstract class Indexer {
   // TODO: implement run in base
   abstract run(): void;
 
-  async processRequestAddedEvent(data: IRequestAdded) {
-    log.debug("processing request:", data.request_id);
-    const token = xInstance.getAccessToken();
+  getOrchestratorAddress(): string {
+    return this.orchestrator.toLowerCase();
+  }
 
-    if (data.oracle.toLowerCase() !== this.getOrchestrator().toLowerCase()) {
+  getOracleAddress(): string {
+    return this.oracleAddress;
+  }
+
+  applyAuthorizationHeader(hostname: string): string | undefined {
+    if (ALLOWED_HOST.includes(hostname) && xTwitterInstance.isInitialized()) {
+      const token = xTwitterInstance.getAccessToken();
+      return `Bearer ${token}`;
+    }
+    return undefined;
+  }
+
+  async processRequestAddedEvent<T>(data: ProcessedRequestAdded<T>) {
+    log.debug("processing request:", data.request_id);
+    const token = xTwitterInstance.getAccessToken();
+
+    if (data.oracle.toLowerCase() !== this.getOrchestratorAddress().toLowerCase()) {
       return null;
     }
-    const url = data.params.value.url?.includes("http") ? data.params.value.url : `https://${data.params.value.url}`;
+    const url = data.params.url?.includes("http") ? data.params.url : `https://${data.params.url}`;
     try {
       const _url = new URL(url);
 
@@ -62,22 +76,22 @@ export abstract class Indexer {
 
     try {
       let request: AxiosResponse<any, any>;
-      if (isValidJson(data.params.value.headers)) {
+      if (isValidJson(data.params.headers)) {
         // TODO: Replace direct requests via axios with requests via VerityClient TS module
         request = await axios({
-          method: data.params.value.method,
-          data: data.params.value.body,
+          method: data.params.method,
+          data: data.params.body,
           url: url,
           headers: {
-            ...JSON.parse(data.params.value.headers),
+            ...JSON.parse(data.params.headers),
             Authorization: `Bearer ${token}`,
           },
         });
         // return { status: request.status, message: request.data };
       } else {
         request = await axios({
-          method: data.params.value.method,
-          data: data.params.value.body,
+          method: data.params.method,
+          data: data.params.body,
           url: url,
           headers: {
             Authorization: `Bearer ${token}`,

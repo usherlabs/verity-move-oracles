@@ -54,6 +54,20 @@ export interface IRequestAdded {
   request_id: string;
 }
 
+export type ProcessedRequestAdded<T> = {
+  notify?: string;
+  oracle: string;
+  params: {
+    body: string;
+    headers: string;
+    method: string;
+    url: string;
+  };
+  pick: string;
+  request_id: string;
+  fullData: T;
+};
+
 interface IDecoded<T> {
   abilities: number;
   type: string;
