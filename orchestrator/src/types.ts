@@ -102,3 +102,68 @@ export const RequestStatus = {
   UNREACHABLE: 5,
   FAILED: 6,
 };
+
+export interface AptosTransactionData {
+  account_transactions: Array<{
+    account_address: string;
+    transaction_version: number;
+  }>;
+}
+
+export interface AptosBlockMetadataTransaction {
+  version: string;
+  hash: string;
+  state_change_hash: string;
+  event_root_hash: string;
+  state_checkpoint_hash?: string | null;
+  gas_used: string;
+  success: boolean;
+  vm_status: string;
+  accumulator_root_hash: string;
+  changes: Array<{
+    address: string;
+    state_key_hash: string;
+    data: {
+      type: string;
+      data: {
+        [key: string]: any;
+      };
+    };
+    type: string;
+  }>;
+  id: string;
+  epoch: string;
+  round: string;
+  events: Array<{
+    guid: {
+      creation_number: number;
+      account_address: string;
+    };
+    sequence_number: number;
+    type: string;
+    data: {
+      [key: string]: any;
+    };
+  }>;
+  previous_block_votes_bitvec: number[];
+  proposer: string;
+  failed_proposer_indices: string[];
+  timestamp: number;
+  type: string;
+}
+
+export interface AptosRequestEvent {
+  creator: string;
+  notify: {
+    vec: string[];
+  };
+  oracle: string;
+  params: {
+    body: string;
+    headers: string;
+    method: string;
+    url: string;
+  };
+  pick: string;
+  request_id: string;
+}

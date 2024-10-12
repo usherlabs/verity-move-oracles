@@ -6,6 +6,7 @@
   "engines": {
     "node": ">=18"
   },
+  "type": "module",
   "keywords": ["web3", "crypto", "blockchain", "move", "verity", "smart-contracts"],
   "author": "Ryan Soury <labs@usher.so>",
   "license": "LGPL-2.1",
@@ -14,9 +15,9 @@
   },
   "homepage": "https://github.com/usherlabs/verity-move-oracles#readme",
   "scripts": {
-    "dev": "tsup --watch --onSuccess 'node dist/index.js'",
+    "dev": "tsup --watch --onSuccess 'node dist/index.cjs'",
     "build": "tsup",
-    "start": "node dist/index.js",
+    "start": "node dist/index.cjs",
     "lint": "biome check src/",
     "lint:fix": "biome check src/ --fix",
     "clean": "del dist",
@@ -50,6 +51,7 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
+    "@aptos-labs/ts-sdk": "^1.29.1",
     "@prisma/client": "5.19.1",
     "@roochnetwork/rooch-sdk": "^0.2.3",
     "@sentry/node": "^8.26.0",
@@ -57,6 +59,7 @@
     "axios": "^1.7.4",
     "cron": "^3.1.7",
     "dotenv": "^16.4.5",
+    "graphql-request": "5.1.0",
     "joi": "^17.13.3",
     "node-jq": "^6.0.1",
     "ts-morph": "^24.0.0",

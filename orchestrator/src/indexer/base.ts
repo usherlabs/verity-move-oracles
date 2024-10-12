@@ -37,7 +37,6 @@ export abstract class Indexer {
   abstract getChainId(): string;
 
   // Abstract: Runs indexer
-  // TODO: implement run in base
   abstract run(): void;
 
   getOrchestratorAddress(): string {
@@ -56,6 +55,15 @@ export abstract class Indexer {
     return undefined;
   }
 
+  /**
+   * Processes the "RequestAdded" event.
+   *
+   * This function validates the request, makes an HTTP request to the specified URL,
+   * and processes the response based on the provided "pick" value.
+   *
+   * @param {IRequestAdded} data - The request data that needs to be processed.
+   * @returns {Promise<{status: number, message: string} | null>} - The status and message of the processed request, or null if the request is not valid.
+   */
   async processRequestAddedEvent<T>(data: ProcessedRequestAdded<T>) {
     log.debug("processing request:", data.request_id);
     const token = xTwitterInstance.getAccessToken();

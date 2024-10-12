@@ -1,12 +1,12 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "CommonJS",
+    "target": "es2018",
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
     "baseUrl": "./orchestrator",
     "paths": {
       "@/*": ["src/*"]
     },
-    "moduleResolution": "Node",
     "outDir": "dist",
     "importsNotUsedAsValues": "remove",
     "strict": true,

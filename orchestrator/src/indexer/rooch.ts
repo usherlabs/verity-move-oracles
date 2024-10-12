@@ -1,5 +1,4 @@
 import env from "@/env";
-import { hosts as xHosts, instance as xInstance } from "@/integrations/xtwitter";
 import { log } from "@/logger";
 import {
   type IEvent,
@@ -27,14 +26,6 @@ export default class RoochIndexer extends Indexer {
     this.keyPair = Secp256k1Keypair.fromSecretKey(this.privateKey);
     log.info(`Rooch Indexer initialized`);
     log.info(`Chain ID: ${this.chainId}`);
-  }
-
-  applyAuthorizationHeader(hostname: string): string | undefined {
-    if (xHosts.includes(hostname) && xInstance.isInitialized()) {
-      const token = xInstance.getAccessToken();
-      return `Bearer ${token}`;
-    }
-    return undefined;
   }
 
   getChainId(): string {
@@ -145,6 +136,9 @@ export default class RoochIndexer extends Indexer {
     log.info("Rooch indexer running...", Date.now());
 
     const latestCommit = await prismaClient.events.findFirst({
+      where: {
+        chain: this.getChainId(),
+      },
       orderBy: {
         eventSeq: "desc",
         // indexedAt: "desc", // Order by date in descending order
