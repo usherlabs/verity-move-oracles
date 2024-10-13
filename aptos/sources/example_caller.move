@@ -77,7 +77,7 @@ module verity_test_foreign_module::example_caller {
               let request_method = Oracles::get_request_params_method(request_id);
               let response = Oracles::get_response(request_id);
               // For each fulfilment, emit an event
-              event::emit(RequestFulfilledEvent {
+              event::emit<RequestFulfilledEvent>(RequestFulfilledEvent {
                 request_url,
                 request_method,
                 response,

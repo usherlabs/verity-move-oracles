@@ -142,7 +142,7 @@ module verity::oracles {
         // TODO: Move gas from recipient to module account
 
         // Emit event
-        event::emit(RequestAdded {
+        event::emit<RequestAdded>(RequestAdded {
             request_id,
             creator: caller_address,
             params,
@@ -181,7 +181,7 @@ module verity::oracles {
         // TODO: Move gas from module escrow to Oracle
 
         // Emit fulfil event
-        event::emit(Fulfilment {
+        event::emit<Fulfilment>(Fulfilment {
             request: *request,
         });
     }
