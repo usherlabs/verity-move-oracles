@@ -18,6 +18,9 @@ export default class AptosIndexer extends Indexer {
     private chainId: Network,
     protected oracleAddress: string,
   ) {
+    if (!privateKey || !/^0x[0-9a-fA-F]+$/.test(privateKey)) {
+      throw new Error("Invalid private key format. It must be a non-empty hex string.");
+    }
     super(oracleAddress, new Secp256k1PrivateKey(privateKey).publicKey().toString());
     this.keyPair = new Secp256k1PrivateKey(privateKey);
     this.account = Account.fromPrivateKey({ privateKey: this.keyPair });
@@ -27,6 +30,10 @@ export default class AptosIndexer extends Indexer {
 
   getChainId(): string {
     return `APTOS-${this.chainId}`;
+  }
+
+  getRpcUrl(): string {
+    return `https://aptos-${this.chainId === Network.TESTNET ? "testnet" : "mainnet"}.nodit.io`;
   }
 
   /**
@@ -40,10 +47,11 @@ export default class AptosIndexer extends Indexer {
    * @returns {Promise<AptosBlockMetadataTransaction[]>} A promise that resolves to an array of Aptos block metadata transactions.
    */
   async fetchTransactionList(transactionIDs: number[]): Promise<AptosBlockMetadataTransaction[]> {
+    // Could be optimized by using Promise.settled preventing a single failed request to fail the entire operation
     return await Promise.all(
       transactionIDs.map(async (transaction) => {
         const response: AptosBlockMetadataTransaction = (
-          await axios.get(`https://aptos-testnet.nodit.io/v1/transactions/by_version/${transaction}`, {
+          await axios.get(`${this.getRpcUrl()}/v1/transactions/by_version/${transaction}`, {
             headers: {
               "X-API-KEY": process.env.APTOS_RPC_KEY,
             },
@@ -68,7 +76,7 @@ export default class AptosIndexer extends Indexer {
    */
   async fetchRequestAddedEvents(cursor: null | number | string = null): Promise<ProcessedRequestAdded<any>[]> {
     try {
-      const endpoint = `https://aptos-${this.chainId === Network.TESTNET ? "testnet" : "mainnet"}.nodit.io/${process.env.APTOS_RPC_KEY}/v1/graphql`;
+      const endpoint = `${this.getRpcUrl()}/${process.env.APTOS_RPC_KEY}/v1/graphql`;
 
       const document = gql`
           query Account_transactions ($version: bigint!,$address: String!) {
@@ -105,7 +113,7 @@ export default class AptosIndexer extends Indexer {
 
       const _temp = fetchedTransactionList
         .filter((elem) => elem.success)
-        .map((elem) => {
+        .map((elem, index) => {
           const matching_events = elem.events.filter(
             (_event) => _event.type === `${this.oracleAddress}::oracles::RequestAdded`,
           );
@@ -113,17 +121,23 @@ export default class AptosIndexer extends Indexer {
           if (matching_events.length === 0) {
             return null;
           } else {
-            return { ...matching_events[0], hash: elem.hash };
+            return {
+              // TODO: Does not account for transactions that surface multiple request_data events
+              ...matching_events[0],
+              tx_hash: elem.hash,
+              tx_version: gqlData.account_transactions[index].transaction_version,
+            };
           }
         })
         .filter((elem) => elem != null);
+
+      log.debug("fetchRequestAddedEvents: ", { events: _temp });
 
       const data: any[] = _temp.map((elem) => ({
         ...elem.data,
         notify: decodeNotifyValue(elem.data.notify?.value?.vec?.at(0) ?? ""),
         fullData: {
-          hash: elem.data.hash,
-          event_id: { event_handle_id: elem.guid.account_address, event_seq: elem.guid.creation_number },
+          event_id: { event_handle_id: elem.tx_hash, event_seq: elem.tx_version },
           event_index: elem.sequence_number,
           event_data: elem.data,
           event_type: elem.type,

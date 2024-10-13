@@ -22,6 +22,9 @@ export default class RoochIndexer extends Indexer {
     private chainId: RoochNetwork,
     protected oracleAddress: string,
   ) {
+    if (!privateKey || !/^0x[0-9a-fA-F]+$/.test(privateKey)) {
+      throw new Error("Invalid private key format. It must be a non-empty hex string.");
+    }
     super(oracleAddress, Secp256k1Keypair.fromSecretKey(privateKey).getRoochAddress().toHexAddress());
     this.keyPair = Secp256k1Keypair.fromSecretKey(this.privateKey);
     log.info(`Rooch Indexer initialized`);

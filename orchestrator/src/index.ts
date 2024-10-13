@@ -31,7 +31,7 @@ import { log } from "./logger";
   }
 
   if (env.aptos.privateKey && env.aptos.chainId && env.aptos.oracleAddress) {
-    const aptosIndexer = new AptosIndexer(env.rooch.privateKey, Network.TESTNET, env.aptos.oracleAddress);
+    const aptosIndexer = new AptosIndexer(env.aptos.privateKey, Network.TESTNET, env.aptos.oracleAddress);
     new CronJob(
       env.rooch.indexerCron,
       () => {
