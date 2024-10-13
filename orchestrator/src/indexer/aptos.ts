@@ -1,8 +1,8 @@
+import env from "@/env";
 import { log } from "@/logger";
 import type { AptosBlockMetadataTransaction, AptosTransactionData, ProcessedRequestAdded } from "@/types";
-import { RequestStatus } from "@/types";
 import { decodeNotifyValue } from "@/util";
-import { Account, Network, Secp256k1PrivateKey } from "@aptos-labs/ts-sdk";
+import { Account, Aptos, AptosConfig, Ed25519PrivateKey, Network } from "@aptos-labs/ts-sdk";
 import axios from "axios";
 import { GraphQLClient, gql } from "graphql-request";
 import prismaClient from "../../prisma";
@@ -10,7 +10,6 @@ import { Indexer } from "./base";
 
 // TODO: Complete Function for to inherit Base Indexer
 export default class AptosIndexer extends Indexer {
-  private keyPair: Secp256k1PrivateKey;
   private account: Account;
 
   constructor(
@@ -21,9 +20,10 @@ export default class AptosIndexer extends Indexer {
     if (!privateKey || !/^0x[0-9a-fA-F]+$/.test(privateKey)) {
       throw new Error("Invalid private key format. It must be a non-empty hex string.");
     }
-    super(oracleAddress, new Secp256k1PrivateKey(privateKey).publicKey().toString());
-    this.keyPair = new Secp256k1PrivateKey(privateKey);
-    this.account = Account.fromPrivateKey({ privateKey: this.keyPair });
+    const key = new Ed25519PrivateKey(privateKey);
+    const account = Account.fromPrivateKey({ privateKey: key });
+    super(oracleAddress, account.accountAddress.toString());
+    this.account = account;
     log.info(`Aptos Indexer initialized`);
     log.info(`Chain ID: ${this.chainId}`);
   }
@@ -53,7 +53,7 @@ export default class AptosIndexer extends Indexer {
         const response: AptosBlockMetadataTransaction = (
           await axios.get(`${this.getRpcUrl()}/v1/transactions/by_version/${transaction}`, {
             headers: {
-              "X-API-KEY": process.env.APTOS_RPC_KEY,
+              "X-API-KEY": env.aptos.noditKey,
             },
           })
         ).data;
@@ -76,7 +76,7 @@ export default class AptosIndexer extends Indexer {
    */
   async fetchRequestAddedEvents(cursor: null | number | string = null): Promise<ProcessedRequestAdded<any>[]> {
     try {
-      const endpoint = `${this.getRpcUrl()}/${process.env.APTOS_RPC_KEY}/v1/graphql`;
+      const endpoint = `${this.getRpcUrl()}/${env.aptos.noditKey}/v1/graphql`;
 
       const document = gql`
           query Account_transactions ($version: bigint!,$address: String!) {
@@ -161,61 +161,68 @@ export default class AptosIndexer extends Indexer {
    * @returns {Promise<any>} - The receipt of the transaction.
    */
   async sendFulfillment(data: ProcessedRequestAdded<any>, status: number, result: string) {
-    //TODO:
-    log.debug("Send fulfillment", { data, status, result });
+    // Set up the Aptos client
+    const aptosConfig = new AptosConfig({ network: Network.TESTNET });
+    const aptos = new Aptos(aptosConfig);
+    aptos.signAndSubmitTransaction;
+    try {
+      // Build the transaction payload
+      const payload = await aptos.transaction.build.simple({
+        sender: this.account.accountAddress,
+        data: {
+          function: `${this.oracleAddress}::oracles::fulfil_request`,
+          functionArguments: [data.request_id, status, result],
+        },
+      });
+
+      // Sign and submit the transaction
+      const pendingTxn = await aptos.signAndSubmitTransaction({
+        signer: this.account,
+        transaction: payload,
+      });
+
+      // Wait for the transaction to be processed
+      const executedTransaction = await aptos.waitForTransaction({ transactionHash: pendingTxn.hash });
+
+      log.debug("Transaction executed:", executedTransaction.hash);
+    } catch (error) {
+      console.error("Error calling entry function:", error);
+    }
   }
 
-  async run() {
-    log.info("Aptos indexer running...", Date.now());
-
-    const latestCommit = await prismaClient.events.findFirst({
-      where: {
-        chain: this.getChainId(),
-      },
-      orderBy: {
-        eventSeq: "desc",
-        // indexedAt: "desc", // Order by date in descending order
+  async save(
+    event: ProcessedRequestAdded<{
+      event_id: {
+        event_handle_id: string;
+        event_seq: number;
+      };
+      event_index: number;
+      event_data: {
+        [key: string]: any;
+      };
+      event_type: string;
+      decoded_event_data: string;
+    }>,
+    data: any,
+    status: number,
+  ) {
+    const dbEventData = {
+      eventHandleId: event.fullData.event_id.event_handle_id,
+      eventSeq: +event.fullData.event_id.event_seq,
+      eventData: JSON.stringify(event.fullData.event_data),
+      eventType: event.fullData.event_type,
+      eventIndex: event.fullData.event_index.toString(),
+      decoded_event_data: JSON.stringify(event.fullData.decoded_event_data),
+      retries: 0,
+      response: JSON.stringify(data),
+      chain: this.getChainId(),
+      status,
+    };
+    log.debug({ dbEventData });
+    await prismaClient.events.create({
+      data: {
+        ...dbEventData,
       },
     });
-
-    // Fetch the latest events from the Aptos Oracles Contract
-    const newRequestsEvents = await this.fetchRequestAddedEvents(latestCommit?.eventSeq ?? null);
-
-    await Promise.all(
-      newRequestsEvents.map(async (event) => {
-        const data = await this.processRequestAddedEvent(event);
-        if (data) {
-          const dbEventData = {
-            eventHandleId: event.fullData.event_id.event_handle_id,
-            eventSeq: +event.fullData.event_id.event_seq,
-            eventData: event.fullData.event_data,
-            eventType: event.fullData.event_type,
-            eventIndex: event.fullData.event_index,
-            decoded_event_data: JSON.stringify(event.fullData.decoded_event_data),
-            retries: 0,
-            response: JSON.stringify(data),
-            chain: this.getChainId(),
-          };
-          try {
-            await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
-            // TODO: Use the notify parameter to send transaction to the contract and function to marked in the request event
-            await prismaClient.events.create({
-              data: {
-                ...dbEventData,
-                status: RequestStatus.SUCCESS,
-              },
-            });
-          } catch (err) {
-            log.error({ err });
-            await prismaClient.events.create({
-              data: {
-                ...dbEventData,
-                status: RequestStatus.FAILED,
-              },
-            });
-          }
-        }
-      }),
-    );
   }
 }

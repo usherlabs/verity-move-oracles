@@ -1,7 +1,5 @@
 import { CronJob } from "cron";
 import "dotenv/config";
-
-import { Network } from "@aptos-labs/ts-sdk";
 import env from "./env";
 import AptosIndexer from "./indexer/aptos";
 import RoochIndexer from "./indexer/rooch";
@@ -15,7 +13,7 @@ import { log } from "./logger";
     await xInstance.requestAccessToken();
   }
 
-  if (env.rooch.privateKey && env.rooch.chainId && env.rooch.oracleAddress) {
+  if (env.rooch.privateKey && env.rooch.chainId && env.rooch.oracleAddress && env.chains.includes("ROOCH")) {
     // https://www.npmjs.com/package/cron#cronjob-class
     const rooch = new RoochIndexer(env.rooch.privateKey, env.rooch.chainId, env.rooch.oracleAddress);
     new CronJob(
@@ -30,8 +28,8 @@ import { log } from "./logger";
     log.info(`Skipping Rooch Indexer initialization...`);
   }
 
-  if (env.aptos.privateKey && env.aptos.chainId && env.aptos.oracleAddress) {
-    const aptosIndexer = new AptosIndexer(env.aptos.privateKey, Network.TESTNET, env.aptos.oracleAddress);
+  if (env.aptos.privateKey && env.aptos.chainId && env.aptos.oracleAddress && env.chains.includes("APTOS")) {
+    const aptosIndexer = new AptosIndexer(env.aptos.privateKey, env.aptos.chainId, env.aptos.oracleAddress);
     new CronJob(
       env.rooch.indexerCron,
       () => {

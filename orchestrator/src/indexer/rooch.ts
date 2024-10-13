@@ -1,13 +1,6 @@
 import env from "@/env";
 import { log } from "@/logger";
-import {
-  type IEvent,
-  type IRequestAdded,
-  type JsonRpcResponse,
-  type ProcessedRequestAdded,
-  RequestStatus,
-  type RoochNetwork,
-} from "@/types";
+import type { IEvent, IRequestAdded, JsonRpcResponse, ProcessedRequestAdded, RoochNetwork } from "@/types";
 import { decodeNotifyValue } from "@/util";
 import { Args, RoochClient, Secp256k1Keypair, Transaction, getRoochNodeUrl } from "@roochnetwork/rooch-sdk";
 import axios from "axios";
@@ -117,7 +110,7 @@ export default class RoochIndexer extends Indexer {
     const tx = new Transaction();
     tx.callFunction({
       target: `${this.oracleAddress}::oracles::fulfil_request`,
-      args: [Args.objectId(data.request_id), Args.u8(status), Args.string(result)],
+      args: [Args.objectId(data.request_id), Args.u16(status), Args.string(result)],
     });
 
     const receipt = await client.signAndExecuteTransaction({
@@ -147,59 +140,26 @@ export default class RoochIndexer extends Indexer {
     return receipt;
   }
 
-  async run() {
-    log.info("Rooch indexer running...", Date.now());
+  async save(event: ProcessedRequestAdded<IEvent<IRequestAdded>>, data: any, status: number) {
+    const dbEventData = {
+      eventHandleId: event.fullData.event_id.event_handle_id,
+      eventSeq: +event.fullData.event_id.event_seq,
+      eventData: event.fullData.event_data,
+      eventType: event.fullData.event_type,
+      eventIndex: event.fullData.event_index,
+      decoded_event_data: JSON.stringify(event.fullData.decoded_event_data),
+      retries: 0,
+      response: JSON.stringify(data),
+      chain: this.getChainId(),
+      status,
+    };
 
-    const latestCommit = await prismaClient.events.findFirst({
-      where: {
-        chain: this.getChainId(),
-      },
-      orderBy: {
-        eventSeq: "desc",
-        // indexedAt: "desc", // Order by date in descending order
+    log.debug({ dbEventData });
+
+    await prismaClient.events.create({
+      data: {
+        ...dbEventData,
       },
     });
-
-    // Fetch the latest events from the Rooch Oracles Contract
-    const newRequestsEvents: ProcessedRequestAdded<IEvent<IRequestAdded>>[] = await this.fetchRequestAddedEvents(
-      latestCommit?.eventSeq ?? null,
-    );
-
-    await Promise.all(
-      newRequestsEvents.map(async (event) => {
-        const data = await this.processRequestAddedEvent(event);
-        if (data) {
-          const dbEventData = {
-            eventHandleId: event.fullData.event_id.event_handle_id,
-            eventSeq: +event.fullData.event_id.event_seq,
-            eventData: event.fullData.event_data,
-            eventType: event.fullData.event_type,
-            eventIndex: event.fullData.event_index,
-            decoded_event_data: JSON.stringify(event.fullData.decoded_event_data),
-            retries: 0,
-            response: JSON.stringify(data),
-            chain: this.getChainId(),
-          };
-          try {
-            await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
-            // TODO: Use the notify parameter to send transaction to the contract and function to marked in the request event
-            await prismaClient.events.create({
-              data: {
-                ...dbEventData,
-                status: RequestStatus.SUCCESS,
-              },
-            });
-          } catch (err) {
-            log.error({ err });
-            await prismaClient.events.create({
-              data: {
-                ...dbEventData,
-                status: RequestStatus.FAILED,
-              },
-            });
-          }
-        }
-      }),
-    );
   }
 }

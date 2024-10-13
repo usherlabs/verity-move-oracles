@@ -1,10 +1,11 @@
 import { log } from "@/logger";
-import type { ProcessedRequestAdded } from "@/types";
+import { type ProcessedRequestAdded, RequestStatus } from "@/types";
 import { run as jqRun } from "node-jq";
 
 import { hosts as xHosts, instance as xTwitterInstance } from "@/integrations/xtwitter";
 import { isValidJson } from "@/util";
 import axios, { type AxiosResponse } from "axios";
+import prismaClient from "prisma";
 
 const ALLOWED_HOST = [...xHosts];
 // TODO: We'll eventually need to framework our this orchestrator and indexer to allow Oracle Operators to create their own connections to various hosts.
@@ -36,9 +37,6 @@ export abstract class Indexer {
   // Abstract: Implementation to get chain identifier. its usually a concat between blockchain and network e.g ("ROOCH-testnet","APTOS-mainnet")
   abstract getChainId(): string;
 
-  // Abstract: Runs indexer
-  abstract run(): void;
-
   getOrchestratorAddress(): string {
     return this.orchestrator.toLowerCase();
   }
@@ -54,6 +52,16 @@ export abstract class Indexer {
     }
     return undefined;
   }
+
+  /**
+   * Saves the event and additional metadata to the database.
+   *
+   * @param {ProcessedRequestAdded<any>} event - The event object containing the request details.
+   * @param {any} data - Additional metadata to be saved along with the event.
+   * @param {number} status - The status code of the operation.
+   * @returns {Promise<void>} A promise that resolves when the saving is complete.
+   */
+  abstract save(event: ProcessedRequestAdded<any>, data: any, status: number): Promise<any>;
 
   /**
    * Processes the "RequestAdded" event.
@@ -137,5 +145,38 @@ export abstract class Indexer {
         return { status: 500, message: "Unexpected error" };
       }
     }
+  }
+
+  async run() {
+    log.info("Aptos indexer running...", Date.now());
+
+    const latestCommit = await prismaClient.events.findFirst({
+      where: {
+        chain: this.getChainId(),
+      },
+      orderBy: {
+        eventSeq: "desc",
+        // indexedAt: "desc", // Order by date in descending order
+      },
+    });
+
+    // Fetch the latest events from the Aptos Oracles Contract
+    const newRequestsEvents = await this.fetchRequestAddedEvents(Number(latestCommit?.eventSeq ?? 0) ?? 0);
+
+    await Promise.all(
+      newRequestsEvents.map(async (event) => {
+        const data = await this.processRequestAddedEvent(event);
+        if (data) {
+          try {
+            await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
+            // TODO: Use the notify parameter to send transaction to the contract and function to marked in the request event
+            await this.save(event, data, RequestStatus.SUCCESS);
+          } catch (err) {
+            log.error({ err });
+            await this.save(event, data, RequestStatus.FAILED);
+          }
+        }
+      }),
+    );
   }
 }

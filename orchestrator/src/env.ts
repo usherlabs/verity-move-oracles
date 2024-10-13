@@ -1,12 +1,6 @@
+import { Network } from "@aptos-labs/ts-sdk";
 import Joi from "joi";
-import {
-  type AptosNetwork,
-  AptosNetworkList,
-  ChainList,
-  type RoochNetwork,
-  RoochNetworkList,
-  SupportedChain,
-} from "./types";
+import { AptosNetworkList, ChainList, type RoochNetwork, RoochNetworkList, SupportedChain } from "./types";
 import { addressValidator, isRequiredWhenChainsInclude, privateKeyValidator } from "./validator";
 
 const baseConfig = {
@@ -21,6 +15,7 @@ const baseConfig = {
   aptosOracleAddress: process.env.APTOS_ORACLE_ADDRESS,
   aptosIndexerCron: process.env.APTOS_INDEXER_CRON,
   aptosPrivateKey: process.env.APTOS_PRIVATE_KEY,
+  aptosNoditKey: process.env.APTOS_NODIT_KEY,
   // Common
   sentryDSN: process.env.SENTRY_DSN ?? "",
   ecdsaPrivateKey: process.env.SENTRY_DSN ?? "",
@@ -36,9 +31,10 @@ interface IEnvVars {
   roochOracleAddress: string;
   roochPrivateKey: string;
   roochIndexerCron: string;
-  aptosChainId: AptosNetwork;
+  aptosChainId: Network;
   aptosOracleAddress: string;
   aptosIndexerCron: string;
+  aptosNoditKey: string;
   aptosPrivateKey: string;
   sentryDSN?: string;
   ecdsaPrivateKey?: string;
@@ -71,7 +67,7 @@ const envVarsSchema = Joi.object({
     SupportedChain.ROOCH,
   ),
   aptosChainId: Joi.string()
-    .valid(...AptosNetworkList) // Assuming AptosNetworkList is defined similarly to RoochNetworkList
+    .valid(...Object.values(Network))
     .insensitive()
     .default(AptosNetworkList[0]),
   aptosOracleAddress: isRequiredWhenChainsInclude(
@@ -84,6 +80,7 @@ const envVarsSchema = Joi.object({
     }),
     SupportedChain.APTOS,
   ),
+  aptosNoditKey: isRequiredWhenChainsInclude(Joi.string(), SupportedChain.APTOS),
   roochIndexerCron: Joi.string().default("*/5 * * * * *"),
   aptosIndexerCron: Joi.string().default("*/5 * * * * *"),
 
@@ -127,5 +124,6 @@ export default {
     oracleAddress: envVars.aptosOracleAddress,
     indexerCron: envVars.aptosIndexerCron,
     privateKey: envVars.aptosPrivateKey,
+    noditKey: envVars.aptosNoditKey,
   },
 };
