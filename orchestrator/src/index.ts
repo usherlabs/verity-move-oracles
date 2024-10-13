@@ -6,7 +6,7 @@ import env from "./env";
 import AptosIndexer from "./indexer/aptos";
 import RoochIndexer from "./indexer/rooch";
 import { instance as xInstance } from "./integrations/xtwitter";
-// import { log } from "./logger";
+import { log } from "./logger";
 
 (async () => {
   // Check env variables to determine which chains to subscribe to for events.
@@ -15,7 +15,7 @@ import { instance as xInstance } from "./integrations/xtwitter";
     await xInstance.requestAccessToken();
   }
 
-  if (env.rooch.privateKey) {
+  if (env.rooch.privateKey && env.rooch.chainId && env.rooch.oracleAddress) {
     // https://www.npmjs.com/package/cron#cronjob-class
     const rooch = new RoochIndexer(env.rooch.privateKey, env.rooch.chainId, env.rooch.oracleAddress);
     new CronJob(
@@ -26,14 +26,12 @@ import { instance as xInstance } from "./integrations/xtwitter";
       null,
       true,
     );
+  } else {
+    log.info(`Skipping Rooch Indexer initialization...`);
   }
-  // TODO: replace/clean up with a proper select condition
-  else {
-    const aptosIndexer = new AptosIndexer(
-      env.rooch.privateKey,
-      Network.TESTNET,
-      "0xa2b7160c0dc70548e8105121b075df9ea3b98c0c82294207ca38cb1165b94f59",
-    );
+
+  if (env.aptos.privateKey && env.aptos.chainId && env.aptos.oracleAddress) {
+    const aptosIndexer = new AptosIndexer(env.rooch.privateKey, Network.TESTNET, env.aptos.oracleAddress);
     new CronJob(
       env.rooch.indexerCron,
       () => {
@@ -42,5 +40,7 @@ import { instance as xInstance } from "./integrations/xtwitter";
       null,
       true,
     );
+  } else {
+    log.info(`Skipping Aptos Indexer initialization...`);
   }
 })();

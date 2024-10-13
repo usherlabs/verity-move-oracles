@@ -141,6 +141,7 @@ export default class AptosIndexer {
 
     const latestCommit = await prismaClient.events.findFirst({
       where: {
+        // @ts-ignore
         chain: this.getChainId(),
       },
       orderBy: {
