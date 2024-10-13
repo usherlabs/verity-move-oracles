@@ -1,5 +1,21 @@
 # Oracles for Aptos
 
+## Deploy Aptos Oracles Contract
+
+1. `aptos init` — to create an account. You can provide a shared Private Key.
+
+2. **Compile**
+
+```bash
+aptos move compile --named-addresses verity=default,verity_test_foreign_module=default
+```
+
+3. **Publish smart sontract**
+
+```bash
+aptos move publish --named-addresses verity=default,verity_test_foreign_module=default
+```
+
 ## Send New Request Transaction
 
 Send a new request transaction to have it indexed. Make sure to replace placeholders with actual values relevant to your setup.
