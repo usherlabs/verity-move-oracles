@@ -16,6 +16,8 @@ The first Oracle supported is an Oracle for X (Twitter) data.
 
 [See Video Demo on Testnet](https://www.loom.com/share/72903d5067b14a05989918f2300f4660?sid=6b7886dd-6074-4751-8d8c-609634117982).
 
+See [Rooch Network Doc](./docs/ROOCH.md) for more information on local development, and testing instructions.
+
 Contracts:
 
 - **Testnet**: `0x9a759932a6640790b3e2a5fefdf23917c8830dcd8998fe8af3f3b49b0ab5ca35`
@@ -24,50 +26,15 @@ Oracles:
 
 - **X (Twitter)**: `0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d`
 
-## Running with Rooch (Locally)
+## Run an Oracle
 
-[See Video Guide for Local Development](https://www.loom.com/share/09f69ebfcf7f4b4899150c4a83e7c704?sid=4ca55c5e-fdf2-4bb7-8401-87af05295362).
-
-### Prerequisites
+## Prerequisites
 
 Before running the script, ensure you have the following prerequisites installed:
 
-- **Rooch**: A blockchain development toolset.
 - **Node.js**: Alongside npm, yarn, or pnpm package managers.
 
-### Step-by-Step Instructions
-
-#### Step 1: Create a Roach Account
-
-First, you need to create a Roach account. This account will be used throughout the setup process.
-
-```bash
-rooch account create
-```
-
-#### Step 2: Clear and Start Local Network
-
-Clear any existing state and start the local network.
-
-```bash
-rooch server clean
-rooch server start
-```
-
-#### Step 3: Deploy Contracts
-
-Navigate to the `rooch` directory, build the contracts for development, publish them with named addresses and update `.env` `ROOCH_ORACLE_ADDRESS` with deployed Address
-
-```bash
-cd rooch
-rooch move build --dev
-rooch move publish --named-addresses verity_test_foreign_module=default,verity=default
-cd ..
-```
-
-#### Step 4: Install Node Dependencies
-
-Install the necessary Node.js dependencies using npm, yarn, or pnpm. Ensure you are in the root project directory.
+### Step 1: Install Node Dependencies
 
 ```bash
 npm install
@@ -77,7 +44,7 @@ yarn install
 pnpm install
 ```
 
-#### Step 5: Run Prisma Migration
+### Step 2: Run Prisma Migration
 
 Run the Prisma migration to update your database schema according to your models.
 
@@ -97,7 +64,7 @@ pnpm prisma:generate:dev
 pnpm prisma:deploy:dev
 ```
 
-#### Step 6: Update the .env file with the correct values
+### Step 3: Update the .env file with the correct values
 
 Copy the example environment file to create your own `.env` file:
 
@@ -105,7 +72,7 @@ Copy the example environment file to create your own `.env` file:
 cp .env.example .env
 ```
 
-Export the Rooch Private Key:
+**To support Rooch Network**, export the Rooch Private Key:
 
 ```bash
 rooch account export --address <Rooch Address>
@@ -115,7 +82,9 @@ To connect to the local Rooch node, set `ROOCH_CHAIN_ID` to `"localnet"`.
 Otherwise, connect to testNet by setting `ROOCH_CHAIN_ID` to `"testnet"`, or to TestNet by setting `ROOCH_CHAIN_ID` to `"testnet"`.  
 Ensure that `ROOCH_ORACLE_ADDRESS` is set to the address of the deployed module, e.g., `"0x85859e45551846d9ab8651bb0b6f6e1740c9d758cfda05cfc39d49e2a604d783"`.
 
-#### Step 7: Run Orchestrator
+**To support Aptos Network**, set `APTOS_PRIVATE_KEY` to your Aptos Wallet Private Key.
+
+### Step 4: Run Orchestrator Node
 
 Start the development server for your application. This step might vary depending on your project setup; the command below assumes a typical setup.
 
@@ -125,52 +94,4 @@ npm run dev
 yarn dev
 # or
 pnpm dev
-```
-
-#### Step 8: Send New Request Transaction
-
-Finally, send a new request transaction to have it indexed. Make sure to replace placeholders with actual values relevant to your setup.
-
-for Rooch
-
-```bash
-rooch move run --function  <contractAddress>::example_caller::request_data --sender-account default --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:<Orchestrator Address>'
-```
-
-for APTOS
-
-```bash
-aptos move run --function-id  0xa2b7160c0dc70548e8105121b075df9ea3b98c0c82294207ca38cb1165b94f59::example_caller::request_data --sender-account default --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:6b516ae2eb4aac47ffadd502cf19ce842020f515f1abea3e154cfc053ab3ab9a'
-```
-
-Here's an example of requesting the Twitter Followers Count on a Local Rooch Node:
-
-```bash
-rooch move run --function 0x85859e45551846d9ab8651bb0b6f6e1740c9d758cfda05cfc39d49e2a604d783::example_caller::request_data --sender-account 0x85859e45551846d9ab8651bb0b6f6e1740c9d758cfda05cfc39d49e2a604d783 --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:0x85859e45551846d9ab8651bb0b6f6e1740c9d758cfda05cfc39d49e2a604d783'
-```
-
-To check the state of the response object on a local Rooch node, use the following command:
-
-```bash
-rooch state -a /object/0x7a01ddf194f8a1c19212d56f747294352bf2e5cf23e6e10e64937aa1955704b0
-```
-
-To confirm the `Request` Object State, use the Object ID generated from the initial transaction to query the state of the response object.
-This allows you to verify that the request was processed successfully and that the response object is correctly stored in the Rooch Network state.
-
-## Instructions for Rooch on Test/Dev/Mainnet
-
-An example of requesting the Twitter Followers Count on a Rooch Testnet:
-
-```bash
-rooch move run --function 0x9a759932a6640790b3e2a5fefdf23917c8830dcd8998fe8af3f3b49b0ab5ca35::example_caller::request_data --sender-account 0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d'
-```
-
-To check the state of the response object on testnet, devnet, or mainnet, 
-
-1. Switch to the relevant network using `rooch env switch --alias <NETWORK_ALIAS>`
-2. Use the following command:
-
-```bash
-rooch object --object-ids <OBJECT_ID>
 ```
