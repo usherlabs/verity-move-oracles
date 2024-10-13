@@ -55,6 +55,7 @@ export interface IRequestAdded {
 }
 
 export type ProcessedRequestAdded<T> = {
+  creator?: string;
   notify?: string;
   oracle: string;
   params: {

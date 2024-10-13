@@ -1,21 +1,28 @@
 import { log } from "@/logger";
 import type { AptosBlockMetadataTransaction, AptosTransactionData, ProcessedRequestAdded } from "@/types";
+import { RequestStatus } from "@/types";
 import { decodeNotifyValue } from "@/util";
-import { Network } from "@aptos-labs/ts-sdk";
+import { Account, Network, Secp256k1PrivateKey } from "@aptos-labs/ts-sdk";
 import axios from "axios";
 import { GraphQLClient, gql } from "graphql-request";
 import prismaClient from "../../prisma";
+import { Indexer } from "./base";
 
 // TODO: Complete Function for to inherit Base Indexer
-export default class AptosIndexer {
+export default class AptosIndexer extends Indexer {
+  private keyPair: Secp256k1PrivateKey;
+  private account: Account;
+
   constructor(
     private privateKey: string,
     private chainId: Network,
-    private oracleAddress: string,
+    protected oracleAddress: string,
   ) {
+    super(oracleAddress, new Secp256k1PrivateKey(privateKey).publicKey().toString());
+    this.keyPair = new Secp256k1PrivateKey(privateKey);
+    this.account = Account.fromPrivateKey({ privateKey: this.keyPair });
     log.info(`Aptos Indexer initialized`);
     log.info(`Chain ID: ${this.chainId}`);
-    log.info(`Oracle Contract Address: ${this.oracleAddress}`);
   }
 
   getChainId(): string {
@@ -114,7 +121,14 @@ export default class AptosIndexer {
       const data: any[] = _temp.map((elem) => ({
         ...elem.data,
         notify: decodeNotifyValue(elem.data.notify?.value?.vec?.at(0) ?? ""),
-        fullData: { hash: elem.data.hash, event_id: elem.guid },
+        fullData: {
+          hash: elem.data.hash,
+          event_id: { event_handle_id: elem.guid.account_address, event_seq: elem.guid.creation_number },
+          event_index: elem.sequence_number,
+          event_data: elem.data,
+          event_type: elem.type,
+          decoded_event_data: "",
+        },
       }));
 
       return data;
@@ -134,6 +148,7 @@ export default class AptosIndexer {
    */
   async sendFulfillment(data: ProcessedRequestAdded<any>, status: number, result: string) {
     //TODO:
+    log.debug("Send fulfillment", { data, status, result });
   }
 
   async run() {
@@ -152,8 +167,41 @@ export default class AptosIndexer {
     // Fetch the latest events from the Aptos Oracles Contract
     const newRequestsEvents = await this.fetchRequestAddedEvents(latestCommit?.eventSeq ?? null);
 
-    console.log({ newRequestsEvents });
-
-    // TODO: Add Transaction write to DB and send transaction
+    await Promise.all(
+      newRequestsEvents.map(async (event) => {
+        const data = await this.processRequestAddedEvent(event);
+        if (data) {
+          const dbEventData = {
+            eventHandleId: event.fullData.event_id.event_handle_id,
+            eventSeq: +event.fullData.event_id.event_seq,
+            eventData: event.fullData.event_data,
+            eventType: event.fullData.event_type,
+            eventIndex: event.fullData.event_index,
+            decoded_event_data: JSON.stringify(event.fullData.decoded_event_data),
+            retries: 0,
+            response: JSON.stringify(data),
+            chain: this.getChainId(),
+          };
+          try {
+            await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
+            // TODO: Use the notify parameter to send transaction to the contract and function to marked in the request event
+            await prismaClient.events.create({
+              data: {
+                ...dbEventData,
+                status: RequestStatus.SUCCESS,
+              },
+            });
+          } catch (err) {
+            log.error({ err });
+            await prismaClient.events.create({
+              data: {
+                ...dbEventData,
+                status: RequestStatus.FAILED,
+              },
+            });
+          }
+        }
+      }),
+    );
   }
 }

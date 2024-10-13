@@ -166,37 +166,32 @@ export default class RoochIndexer extends Indexer {
       newRequestsEvents.map(async (event) => {
         const data = await this.processRequestAddedEvent(event);
         if (data) {
+          const dbEventData = {
+            eventHandleId: event.fullData.event_id.event_handle_id,
+            eventSeq: +event.fullData.event_id.event_seq,
+            eventData: event.fullData.event_data,
+            eventType: event.fullData.event_type,
+            eventIndex: event.fullData.event_index,
+            decoded_event_data: JSON.stringify(event.fullData.decoded_event_data),
+            retries: 0,
+            response: JSON.stringify(data),
+            chain: this.getChainId(),
+          };
           try {
             await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
             // TODO: Use the notify parameter to send transaction to the contract and function to marked in the request event
             await prismaClient.events.create({
               data: {
-                eventHandleId: event.fullData.event_id.event_handle_id,
-                eventSeq: +event.fullData.event_id.event_seq,
-                eventData: event.fullData.event_data,
-                eventType: event.fullData.event_type,
-                eventIndex: event.fullData.event_index,
-                decoded_event_data: JSON.stringify(event.fullData.decoded_event_data),
-                retries: 0,
+                ...dbEventData,
                 status: RequestStatus.SUCCESS,
-                response: JSON.stringify(data),
-                chain: this.getChainId(),
               },
             });
           } catch (err) {
             log.error({ err });
             await prismaClient.events.create({
               data: {
-                eventHandleId: event.fullData.event_id.event_handle_id,
-                eventSeq: +event.fullData.event_id.event_seq,
-                eventData: event.fullData.event_data,
-                eventType: event.fullData.event_type,
-                eventIndex: event.fullData.event_index,
-                decoded_event_data: JSON.stringify(event.fullData.decoded_event_data),
-                retries: 0,
+                ...dbEventData,
                 status: RequestStatus.FAILED,
-                chain: this.getChainId(),
-                response: JSON.stringify(data),
               },
             });
           }
