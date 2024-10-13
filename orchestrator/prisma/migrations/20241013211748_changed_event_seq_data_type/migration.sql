@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Events" ALTER COLUMN "eventSeq" SET DATA TYPE BIGINT;
