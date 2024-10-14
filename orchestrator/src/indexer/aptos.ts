@@ -142,7 +142,6 @@ export default class AptosIndexer extends Indexer {
         })
         .filter((elem) => elem != null);
 
-      // log.debug("fetchRequestAddedEvents: ", { events: _temp });
 
       const data: any[] = _temp.map((elem) => ({
         ...elem.data,
