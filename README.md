@@ -7,8 +7,8 @@ The first Oracle supported is an Oracle for X (Twitter) data.
 ## Supported Blockchains
 
 - [x] [Rooch Network](https://rooch.network/)
-- [ ] [Aptos](https://aptosfoundation.org/)
-- [ ] ~Sui~
+- [x] [Aptos](https://aptosfoundation.org/)
+- [ ] Sui
 
 ## Contracts & Oracles
 
@@ -25,6 +25,18 @@ Contracts:
 Oracles:
 
 - **X (Twitter)**: `0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d`
+
+### Aptos Network
+
+See [Aptos Doc](./docs/APTOS.md) for more information on local development, and testing instructions.
+
+Contracts:
+
+- **Testnet**: `0xa2b7160c0dc70548e8105121b075df9ea3b98c0c82294207ca38cb1165b94f59`
+
+Oracles:
+
+- **X (Twitter)**: *Coming Soon*
 
 ## Run an Oracle
 
