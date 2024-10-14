@@ -36,7 +36,7 @@ Contracts:
 
 Oracles:
 
-- **X (Twitter)**: *Coming Soon*
+- **X (Twitter)**: `0x6b516ae2eb4aac47ffadd502cf19ce842020f515f1abea3e154cfc053ab3ab9a`
 
 ## Run an Oracle
 
