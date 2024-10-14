@@ -142,8 +142,6 @@ export default class AptosIndexer extends Indexer {
         })
         .filter((elem) => elem != null);
 
-      log.debug("fetchRequestAddedEvents: ", { events: _temp });
-      // TODO: Drop requests that have already been fuliflled by this Oracle.
 
       const data: any[] = _temp.map((elem) => ({
         ...elem.data,
@@ -176,7 +174,16 @@ export default class AptosIndexer extends Indexer {
     // Set up the Aptos client
     const aptosConfig = new AptosConfig({ network: Network.TESTNET });
     const aptos = new Aptos(aptosConfig);
-    aptos.signAndSubmitTransaction;
+    const view_request = await aptos.view({
+      payload: {
+        function: `${this.oracleAddress}::oracles::get_response_status`,
+        functionArguments: [data.request_id],
+      },
+    });
+    if (view_request[0] !== 0) {
+      log.debug({ message: `Request: ${data.request_id} as already been processed` });
+      return null;
+    }
     try {
       // Build the transaction payload
       const payload = await aptos.transaction.build.simple({
@@ -230,7 +237,7 @@ export default class AptosIndexer extends Indexer {
       chain: this.getChainId(),
       status,
     };
-    log.debug({ dbEventData });
+    log.debug({ eventHandleId: event.fullData.event_id.event_handle_id, eventSeq: +event.fullData.event_id.event_seq });
     await prismaClient.events.create({
       data: {
         ...dbEventData,

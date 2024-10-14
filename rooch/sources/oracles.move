@@ -245,9 +245,9 @@ module verity::oracles {
 module verity::test_oracles {
     use std::string;
     use moveos_std::signer;
-    use std::option::{Self};
-    use verity::oracles::{Self,Request};
-    use moveos_std::object::{Self,ObjectID};
+    use std::option;
+    use verity::oracles;
+    use moveos_std::object::ObjectID;
 
 
     struct Test has key {

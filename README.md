@@ -20,7 +20,7 @@ See [Rooch Network Doc](./docs/ROOCH.md) for more information on local developme
 
 Contracts:
 
-- **Testnet**: `0x9a759932a6640790b3e2a5fefdf23917c8830dcd8998fe8af3f3b49b0ab5ca35`
+- **Testnet**: `0x9ce8eaf2166e9a6d4e8f1d27626297a0cf5ba1eaeb31137e08cc8f7773fb83f8`
 
 Oracles:
 
@@ -38,7 +38,7 @@ Contracts:
 
 Oracles:
 
-- **X (Twitter)**: *Coming Soon*
+- **X (Twitter)**: `0x6b516ae2eb4aac47ffadd502cf19ce842020f515f1abea3e154cfc053ab3ab9a`
 
 ## Run an Oracle
 
