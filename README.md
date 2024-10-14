@@ -28,6 +28,8 @@ Oracles:
 
 ### Aptos Network
 
+[See Video Demo on Testnet](https://www.loom.com/share/f144c5c66c7040e9b37b8a2a66d493e3?sid=f59fa659-9727-4fed-b5ac-39bd7c61e9a8).
+
 See [Aptos Doc](./docs/APTOS.md) for more information on local development, and testing instructions.
 
 Contracts:
