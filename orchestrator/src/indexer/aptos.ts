@@ -9,6 +9,7 @@ import prismaClient from "../../prisma";
 import { Indexer } from "./base";
 
 export default class AptosIndexer extends Indexer {
+  private lastTxVersion: number;
   private account: Account;
 
   constructor(
@@ -23,6 +24,7 @@ export default class AptosIndexer extends Indexer {
     const account = Account.fromPrivateKey({ privateKey: key });
     super(oracleAddress, account.accountAddress.toString());
     this.account = account;
+    this.lastTxVersion = 0;
     log.info(`Aptos Indexer initialized`);
     log.info(`Chain ID: ${this.chainId}`);
   }
@@ -93,11 +95,18 @@ export default class AptosIndexer extends Indexer {
           }
       `;
 
+      let internalCursor = 0;
+      if (Number(cursor) > this.lastTxVersion) {
+        internalCursor = Number(cursor);
+      } else {
+        internalCursor = this.lastTxVersion;
+      }
+
       const client = new GraphQLClient(endpoint);
       const gqlData: AptosTransactionData = await client.request({
         document,
         variables: {
-          version: cursor ?? 0,
+          version: internalCursor,
           address: this.oracleAddress.toLowerCase(),
         },
       });
@@ -105,6 +114,9 @@ export default class AptosIndexer extends Indexer {
       if (gqlData.account_transactions.length === 0) {
         return [];
       }
+
+      // Set in memory the last transaction version to prevent re-fetching the same events
+      this.lastTxVersion = gqlData.account_transactions[gqlData.account_transactions.length - 1].transaction_version;
 
       const fetchedTransactionList = await this.fetchTransactionList(
         gqlData.account_transactions.map((elem) => elem.transaction_version),

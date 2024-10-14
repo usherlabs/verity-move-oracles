@@ -76,6 +76,7 @@ export abstract class Indexer {
     const token = xTwitterInstance.getAccessToken();
 
     if (data.oracle.toLowerCase() !== this.getOrchestratorAddress().toLowerCase()) {
+      log.debug("skipping request as it's not for this Oracle:", data.request_id);
       return null;
     }
     const url = data.params.url?.includes("http") ? data.params.url : `https://${data.params.url}`;
