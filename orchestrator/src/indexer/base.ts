@@ -5,7 +5,7 @@ import { run as jqRun } from "node-jq";
 import { instance as xTwitterInstance } from "@/integrations/xtwitter";
 import { isValidJson } from "@/util";
 import axios, { type AxiosResponse } from "axios";
-import prismaClient from "prisma";
+import prismaClient from "../../prisma";
 
 const ALLOWED_HOST = [...xTwitterInstance.hosts];
 

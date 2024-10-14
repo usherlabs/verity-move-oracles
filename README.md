@@ -51,7 +51,6 @@ Run the Prisma migration to update your database schema according to your models
 **In Production (for PostgreSQL):**
 
 ```bash
-pnpm clean:db
 pnpm prisma:generate
 pnpm prisma:deploy
 ```

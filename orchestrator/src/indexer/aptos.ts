@@ -8,7 +8,6 @@ import { GraphQLClient, gql } from "graphql-request";
 import prismaClient from "../../prisma";
 import { Indexer } from "./base";
 
-// TODO: Complete Function for to inherit Base Indexer
 export default class AptosIndexer extends Indexer {
   private account: Account;
 
