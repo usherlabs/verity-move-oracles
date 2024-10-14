@@ -58,21 +58,56 @@ pnpm install
 
 ### Step 2: Run Prisma Migration
 
-Run the Prisma migration to update your database schema according to your models.
+If you're not already running PostgreSQL locally, you can use Docker to set it up quickly. Follow these steps:
+
+#### Set Your .env variables for PostgreSQL
+
+Ensure your `.env` file contains the following PostgreSQL credentials:
+
+```plaintext
+POSTGRES_USER=your_username
+POSTGRES_PASSWORD=your_password
+POSTGRES_DB=your_database
+```
+
+Replace `your_username`, `your_password`, and `your_database` with your desired PostgreSQL username, password, and database name.
+
+#### Run PostgreSQL with Docker
+
+Use Docker Compose to start a PostgreSQL container. Create a `docker-compose.yml` file with the following content:
+
+```yaml
+version: '3.1'
+
+services:
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+```
+
+Run the following command to start the PostgreSQL container in detached mode:
+
+```bash
+docker-compose up -d
+```
+
+This will start a PostgreSQL instance accessible on port 5432 of your localhost, using the credentials specified in your `.env` file.
+
+#### Run the Prisma migration 
+
+This will update your database schema according to your models.
 
 **In Production (for PostgreSQL):**
 
 ```bash
 pnpm prisma:generate
 pnpm prisma:deploy
-```
-
-**In Development (for SQLite):**
-
-```bash
-pnpm clean:db
-pnpm prisma:generate:dev
-pnpm prisma:deploy:dev
 ```
 
 ### Step 3: Update the .env file with the correct values
