@@ -2,13 +2,12 @@ import { log } from "@/logger";
 import { type ProcessedRequestAdded, RequestStatus } from "@/types";
 import { run as jqRun } from "node-jq";
 
-import { hosts as xHosts, instance as xTwitterInstance } from "@/integrations/xtwitter";
+import { instance as xTwitterInstance } from "@/integrations/xtwitter";
 import { isValidJson } from "@/util";
 import axios, { type AxiosResponse } from "axios";
 import prismaClient from "prisma";
 
-const ALLOWED_HOST = [...xHosts];
-// TODO: We'll eventually need to framework our this orchestrator and indexer to allow Oracle Operators to create their own connections to various hosts.
+const ALLOWED_HOST = [...xTwitterInstance.hosts];
 
 // Abstract base class
 export abstract class Indexer {

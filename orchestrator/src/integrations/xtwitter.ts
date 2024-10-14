@@ -11,6 +11,10 @@ class XfkaTwitter {
     private apiKeySecret: string,
   ) {}
 
+  get hosts() {
+    return ["x.com", "api.x.com", "twitter.com", "api.twitter.com"];
+  }
+
   isAvailable(): boolean {
     if (this.apiKey && this.apiKeySecret) {
       return true;
@@ -60,5 +64,3 @@ class XfkaTwitter {
 }
 
 export const instance = new XfkaTwitter(env.integrations.xApiKey, env.integrations.xApiSecret);
-
-export const hosts = ["x.com", "api.x.com", "twitter.com", "api.twitter.com"];
