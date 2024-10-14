@@ -23,24 +23,24 @@ services:
     volumes:
       - postgres-db-data:/var/lib/postgresql/data
 
-  # orchestrator:
-  #   build: 
-  #     dockerfile: ./orch.dockerfile
-  #     context: .
-  #   image: orchestrator:move
-  #   container_name: verity-move-orchestrator
-  #   environment:
-  #     DATABASE_URL: ${DATABASE_URL}
-  #   networks:
-  #     - verify-network
-  #   depends_on:
-  #     postgres_db:
-  #       condition: service_healthy
-  #   command: >
-  #     sh -c "
-  #       npx prisma migrate deploy &&
-  #       pnpm run start
-  #     "
+  orchestrator:
+    build: 
+      dockerfile: ./orch.dockerfile
+      context: .
+    image: orchestrator:move
+    container_name: verity-move-orchestrator
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    networks:
+      - verify-network
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+    command: >
+      sh -c "
+        npx prisma migrate deploy &&
+        pnpm run start
+      "
 
 volumes:
   postgres-db-data:

@@ -32,12 +32,12 @@ jobs:
 
       - name: Download rooch
         run: |
-          wget https://github.com/rooch-network/rooch/releases/latest/download/rooch-ubuntu-latest.zip
+          wget https://github.com/rooch-network/rooch/releases/latest/download/rooch-ubuntu-22.04.zip
           echo "Download completed"
       
       - name: Install Rooch
         run: |
-          unzip rooch-ubuntu-latest.zip
+          unzip rooch-ubuntu-22.04.zip
           sudo cp rooch-artifacts/rooch /usr/local/bin
           rooch --version
           echo "Installation completed"
