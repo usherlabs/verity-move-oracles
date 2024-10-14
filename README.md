@@ -103,8 +103,6 @@ This will start a PostgreSQL instance accessible on port 5432 of your localhost,
 
 This will update your database schema according to your models.
 
-**In Production (for PostgreSQL):**
-
 ```bash
 pnpm prisma:generate
 pnpm prisma:deploy
