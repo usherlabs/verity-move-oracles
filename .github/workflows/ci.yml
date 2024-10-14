@@ -30,7 +30,7 @@ jobs:
       #       override: true
       #       components: rustfmt, clippy
 
-      - name: Download rooch
+      - name: Download ROOCH and APTOS
         run: |
           wget https://github.com/rooch-network/rooch/releases/latest/download/rooch-ubuntu-22.04.zip
           wget -qO- "https://aptos.dev/scripts/install_cli.py" | python3
