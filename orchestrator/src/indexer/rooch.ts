@@ -15,9 +15,6 @@ export default class RoochIndexer extends Indexer {
     private chainId: RoochNetwork,
     protected oracleAddress: string,
   ) {
-    if (!privateKey || !/^0x[0-9a-fA-F]+$/.test(privateKey)) {
-      throw new Error("Invalid private key format. It must be a non-empty hex string.");
-    }
     super(oracleAddress, Secp256k1Keypair.fromSecretKey(privateKey).getRoochAddress().toHexAddress());
     this.keyPair = Secp256k1Keypair.fromSecretKey(this.privateKey);
     log.info(`Rooch Indexer initialized`);
@@ -107,6 +104,16 @@ export default class RoochIndexer extends Indexer {
     });
     log.debug({ notify: data.notify });
 
+    const view = await client.executeViewFunction({
+      target: `${this.oracleAddress}::oracles::get_response_status`,
+      args: [Args.objectId(data.request_id)],
+    });
+
+    if (view.vm_status === "Executed" && view.return_values && view.return_values[0].decoded_value !== 0) {
+      log.debug({ message: `Request: ${data.request_id} as already been processed` });
+      return null;
+    }
+
     const tx = new Transaction();
     tx.callFunction({
       target: `${this.oracleAddress}::oracles::fulfil_request`,
@@ -154,7 +161,7 @@ export default class RoochIndexer extends Indexer {
       status,
     };
 
-    log.debug({ dbEventData });
+    log.debug({ eventHandleId: event.fullData.event_id.event_handle_id, eventSeq: +event.fullData.event_id.event_seq });
 
     await prismaClient.events.create({
       data: {
