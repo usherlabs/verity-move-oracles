@@ -18,11 +18,15 @@ export default class RoochIndexer extends Indexer {
     super(oracleAddress, Secp256k1Keypair.fromSecretKey(privateKey).getRoochAddress().toHexAddress());
     this.keyPair = Secp256k1Keypair.fromSecretKey(this.privateKey);
     log.info(`Rooch Indexer initialized`);
-    log.info(`Chain ID: ${this.chainId}`);
+    log.info(`Chain ID: ${this.getChainId()} \n\t\tOrchestrator Oracle Node Address: ${this.orchestrator}`);
   }
 
   getChainId(): string {
     return `ROOCH-${this.chainId}`;
+  }
+
+  getRoochNodeUrl() {
+    return this.chainId === "pre-mainnet" ? "https://main-seed.rooch.network" : getRoochNodeUrl(this.chainId);
   }
 
   /**
@@ -40,7 +44,7 @@ export default class RoochIndexer extends Indexer {
   async fetchRequestAddedEvents(cursor: null | number | string = null): Promise<ProcessedRequestAdded<any>[]> {
     try {
       const response = await axios.post(
-        getRoochNodeUrl(this.chainId),
+        this.getRoochNodeUrl(),
         {
           id: 101,
           jsonrpc: "2.0",
@@ -68,7 +72,12 @@ export default class RoochIndexer extends Indexer {
       }
 
       if (!newRequestsEvents.result?.data) {
-        log.debug("No new events found", newRequestsEvents);
+        log.debug("No new events found", newRequestsEvents, {
+          id: 101,
+          jsonrpc: "2.0",
+          method: "rooch_getEventsByEventHandle",
+          params: [`${this.oracleAddress}::oracles::RequestAdded`, cursor, `${env.batchSize}`, false, { decode: true }],
+        });
         return [];
       }
 
@@ -100,7 +109,7 @@ export default class RoochIndexer extends Indexer {
    */
   async sendFulfillment(data: ProcessedRequestAdded<any>, status: number, result: string) {
     const client = new RoochClient({
-      url: getRoochNodeUrl(this.chainId),
+      url: this.getRoochNodeUrl(),
     });
     log.debug({ notify: data.notify });
 
