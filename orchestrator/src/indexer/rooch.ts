@@ -18,7 +18,7 @@ export default class RoochIndexer extends Indexer {
     super(oracleAddress, Secp256k1Keypair.fromSecretKey(privateKey).getRoochAddress().toHexAddress());
     this.keyPair = Secp256k1Keypair.fromSecretKey(this.privateKey);
     log.info(`Rooch Indexer initialized`);
-    log.info(`Chain ID: ${this.getChainId()} \nOrchestrator Oracle Node Address: ${this.orchestrator}`);
+    log.info(`Chain ID: ${this.getChainId()} \n\t\tOrchestrator Oracle Node Address: ${this.orchestrator}`);
   }
 
   getChainId(): string {

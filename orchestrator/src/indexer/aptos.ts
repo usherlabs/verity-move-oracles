@@ -26,7 +26,7 @@ export default class AptosIndexer extends Indexer {
     this.account = account;
     this.lastTxVersion = 0;
     log.info(`Aptos Indexer initialized`);
-    log.info(`Chain ID: ${this.getChainId()} \nOrchestrator Oracle Node Address: ${this.orchestrator}`);
+    log.info(`Chain ID: ${this.getChainId()} \n\t\tOrchestrator Oracle Node Address: ${this.orchestrator}`);
   }
 
   getChainId(): string {
