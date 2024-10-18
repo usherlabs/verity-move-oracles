@@ -6,7 +6,9 @@ import { addressValidator, isRequiredWhenChainsInclude, privateKeyValidator } fr
 const baseConfig = {
   chains: (process.env.CHAINS ? process.env.CHAINS.split(",") : ChainList) as SupportedChain[],
   // Rooch
-  roochChainId: process.env.ROOCH_CHAIN_ID,
+  roochChainId: (process.env.ROOCH_CHAIN_ID
+    ? process.env.ROOCH_CHAIN_ID.split(",")
+    : ["testnet", "pre-mainnet"]) as RoochNetwork[],
   roochPrivateKey: process.env.ROOCH_PRIVATE_KEY ?? "",
   roochOracleAddress: process.env.ROOCH_ORACLE_ADDRESS ?? "",
   roochIndexerCron: process.env.ROOCH_INDEXER_CRON,
@@ -27,7 +29,7 @@ const baseConfig = {
 
 interface IEnvVars {
   chains: SupportedChain[];
-  roochChainId: RoochNetwork;
+  roochChainId: RoochNetwork[];
   roochOracleAddress: string;
   roochPrivateKey: string;
   roochIndexerCron: string;
@@ -52,10 +54,14 @@ const envVarsSchema = Joi.object({
         .insensitive(),
     )
     .default(ChainList),
-  roochChainId: Joi.string()
-    .valid(...RoochNetworkList)
-    .insensitive()
-    .default(RoochNetworkList[0]),
+  roochChainId: Joi.array()
+    .items(
+      Joi.string()
+        .valid(...RoochNetworkList)
+        .insensitive()
+        .default(RoochNetworkList[0]),
+    )
+    .default([RoochNetworkList[0]]),
   roochOracleAddress: isRequiredWhenChainsInclude(
     Joi.string().custom((value, helper) => addressValidator(value, helper)),
     SupportedChain.ROOCH,

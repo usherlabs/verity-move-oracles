@@ -25,6 +25,10 @@ export default class RoochIndexer extends Indexer {
     return `ROOCH-${this.chainId}`;
   }
 
+  getRoochNodeUrl() {
+    return this.chainId === "pre-mainnet" ? "https://main-seed.rooch.network" : getRoochNodeUrl(this.chainId);
+  }
+
   /**
    * Fetches a list of RequestAdded events based on the provided cursor.
    *
@@ -40,7 +44,7 @@ export default class RoochIndexer extends Indexer {
   async fetchRequestAddedEvents(cursor: null | number | string = null): Promise<ProcessedRequestAdded<any>[]> {
     try {
       const response = await axios.post(
-        getRoochNodeUrl(this.chainId),
+        this.getRoochNodeUrl(),
         {
           id: 101,
           jsonrpc: "2.0",
@@ -100,7 +104,7 @@ export default class RoochIndexer extends Indexer {
    */
   async sendFulfillment(data: ProcessedRequestAdded<any>, status: number, result: string) {
     const client = new RoochClient({
-      url: getRoochNodeUrl(this.chainId),
+      url: this.getRoochNodeUrl(),
     });
     log.debug({ notify: data.notify });
 
