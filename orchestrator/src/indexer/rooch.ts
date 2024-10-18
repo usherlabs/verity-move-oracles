@@ -18,7 +18,7 @@ export default class RoochIndexer extends Indexer {
     super(oracleAddress, Secp256k1Keypair.fromSecretKey(privateKey).getRoochAddress().toHexAddress());
     this.keyPair = Secp256k1Keypair.fromSecretKey(this.privateKey);
     log.info(`Rooch Indexer initialized`);
-    log.info(`Chain ID: ${this.chainId}`);
+    log.info(`Chain ID: ${this.getChainId()} \nOrchestrator Oracle Node Address: ${this.orchestrator}`);
   }
 
   getChainId(): string {
@@ -72,7 +72,12 @@ export default class RoochIndexer extends Indexer {
       }
 
       if (!newRequestsEvents.result?.data) {
-        log.debug("No new events found", newRequestsEvents);
+        log.debug("No new events found", newRequestsEvents, {
+          id: 101,
+          jsonrpc: "2.0",
+          method: "rooch_getEventsByEventHandle",
+          params: [`${this.oracleAddress}::oracles::RequestAdded`, cursor, `${env.batchSize}`, false, { decode: true }],
+        });
         return [];
       }
 
