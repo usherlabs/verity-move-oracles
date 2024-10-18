@@ -21,6 +21,7 @@ See [Rooch Network Doc](./docs/ROOCH.md) for more information on local developme
 Contracts:
 
 - **Testnet**: `0x9ce8eaf2166e9a6d4e8f1d27626297a0cf5ba1eaeb31137e08cc8f7773fb83f8`
+- **Pre-mainnet**: `0x9ce8eaf2166e9a6d4e8f1d27626297a0cf5ba1eaeb31137e08cc8f7773fb83f8`
 
 Oracles:
 
