@@ -16,7 +16,6 @@ export abstract class Indexer {
     protected orchestrator: string,
   ) {
     log.info(`Oracle Contract Address: ${this.oracleAddress}`);
-    log.info(`Orchestrator Oracle Node Address: ${this.orchestrator}`);
   }
 
   // Abstract: Implementation To fetch Data

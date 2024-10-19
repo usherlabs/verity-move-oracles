@@ -13,17 +13,20 @@ import { log } from "./logger";
     await xInstance.requestAccessToken();
   }
 
-  if (env.rooch.privateKey && env.rooch.chainId && env.rooch.oracleAddress && env.chains.includes("ROOCH")) {
+  if (env.rooch.privateKey && env.rooch.chainId.length > 0 && env.rooch.oracleAddress && env.chains.includes("ROOCH")) {
     // https://www.npmjs.com/package/cron#cronjob-class
-    const rooch = new RoochIndexer(env.rooch.privateKey, env.rooch.chainId, env.rooch.oracleAddress);
-    new CronJob(
-      env.rooch.indexerCron,
-      () => {
-        rooch.run();
-      },
-      null,
-      true,
-    );
+
+    env.rooch.chainId.map((chain) => {
+      const rooch = new RoochIndexer(env.rooch.privateKey, chain, env.rooch.oracleAddress);
+      new CronJob(
+        env.rooch.indexerCron,
+        () => {
+          rooch.run();
+        },
+        null,
+        true,
+      );
+    });
   } else {
     log.info(`Skipping Rooch Indexer initialization...`);
   }
