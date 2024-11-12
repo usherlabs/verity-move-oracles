@@ -54,6 +54,54 @@ export interface IRequestAdded {
   request_id: string;
 }
 
+interface OracleParams {
+  abilities: number;
+  type: string;
+  value: {
+    body: string;
+    headers: string;
+    method: string;
+    url: string;
+  };
+}
+
+interface ResponseValue {
+  vec: string[];
+}
+
+interface Response {
+  abilities: number;
+  type: string;
+  value: ResponseValue;
+}
+
+interface Data {
+  created_at: string;
+  edit_history_tweet_ids?: string[];
+  id: string;
+  text: string;
+  entities: {
+    hashtags: Array<{
+      start: number;
+      end: number;
+      tag: string;
+    }>;
+  };
+  author_id: string;
+}
+
+interface TweetData {
+  data: Data;
+}
+
+export interface IOracleRequest {
+  oracle: string;
+  params: OracleParams;
+  pick: string;
+  response: TweetData;
+  response_status: number;
+}
+
 export type ProcessedRequestAdded<T> = {
   creator?: string;
   notify?: string;
