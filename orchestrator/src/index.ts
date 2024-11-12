@@ -21,7 +21,7 @@ import { log } from "./logger";
       new CronJob(
         "0 * * * * *",
         () => {
-          rooch.sendUnfulfilledOrders();
+          rooch.sendUnfulfilledRequests();
         },
         null,
         false,

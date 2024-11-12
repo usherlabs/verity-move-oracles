@@ -26,13 +26,13 @@ export default class RoochIndexer extends Indexer {
   }
 
   /**
-   * Sends unfulfilled orders by querying for Request objects and processing them.
+   * Sends unfulfilled Requests by querying for Request objects and processing them.
    * This method iterates through paginated results, identifies unfulfilled requests,
    * and sends fulfillment responses for each.
    *
    * @returns {Promise<any[]>} An array of fulfilled request data.
    */
-  async sendUnfulfilledOrders() {
+  async sendUnfulfilledRequests() {
     // Initialize the Rooch client with the current node URL
     const client = new RoochClient({ url: this.getRoochNodeUrl() });
 
