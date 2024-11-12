@@ -182,8 +182,8 @@ export default class RoochIndexer extends Indexer {
         };
         return data;
       });
-    } catch (error) {
-      log.error("Error fetching events", error);
+    } catch (error: any) {
+      log.error("Error fetching events", { error: error?.message });
       return [];
     }
   }
@@ -200,7 +200,6 @@ export default class RoochIndexer extends Indexer {
     const client = new RoochClient({
       url: this.getRoochNodeUrl(),
     });
-    log.debug({ notify: data.notify });
 
     const view = await client.executeViewFunction({
       target: `${this.oracleAddress}::oracles::get_response_status`,
@@ -223,8 +222,6 @@ export default class RoochIndexer extends Indexer {
       signer: this.keyPair,
     });
 
-    log.debug({ execution_info: receipt.execution_info });
-
     try {
       if ((data.notify?.length ?? 0) > 66) {
         const tx = new Transaction();
@@ -236,8 +233,6 @@ export default class RoochIndexer extends Indexer {
           transaction: tx,
           signer: this.keyPair,
         });
-
-        log.debug(JSON.stringify(receipt));
       }
     } catch (err) {
       log.error(err);
@@ -258,8 +253,6 @@ export default class RoochIndexer extends Indexer {
       chain: this.getChainId(),
       status,
     };
-
-    log.debug({ eventHandleId: event.fullData.event_id.event_handle_id, eventSeq: +event.fullData.event_id.event_seq });
 
     await prismaClient.events.create({
       data: {
