@@ -119,10 +119,8 @@ export abstract class Indexer {
         });
       }
 
-      log.debug(JSON.stringify({ responseData: request.data }));
       try {
         const result = await jqRun(data.pick, JSON.stringify(request.data), { input: "string" });
-        log.debug(JSON.stringify({ result }));
         return { status: request.status, message: result };
       } catch {
         return { status: 409, message: "`Pick` value provided could not be resolved on the returned response" };
@@ -175,8 +173,8 @@ export abstract class Indexer {
             await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
             // TODO: Use the notify parameter to send transaction to the contract and function to marked in the request event
             await this.save(event, data, RequestStatus.SUCCESS);
-          } catch (err) {
-            log.error({ err });
+          } catch (err: any) {
+            log.error({ err: err.message });
             await this.save(event, data, RequestStatus.FAILED);
           }
         }

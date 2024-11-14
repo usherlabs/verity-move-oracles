@@ -156,8 +156,8 @@ export default class AptosIndexer extends Indexer {
       }));
 
       return data;
-    } catch (error) {
-      log.error("Error fetching events", error);
+    } catch (error: any) {
+      log.error("Error fetching events", { error: error?.message });
       return [];
     }
   }

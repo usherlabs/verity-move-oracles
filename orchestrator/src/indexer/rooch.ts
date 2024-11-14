@@ -25,6 +25,95 @@ export default class RoochIndexer extends Indexer {
     return `ROOCH-${this.chainId}`;
   }
 
+  /**
+   * Sends unfulfilled Requests by querying for Request objects and processing them.
+   * This method iterates through paginated results, identifies unfulfilled requests,
+   * and sends fulfillment responses for each.
+   *
+   * @returns {Promise<any[]>} An array of fulfilled request data.
+   */
+  async sendUnfulfilledRequests() {
+    // Initialize the Rooch client with the current node URL
+    const client = new RoochClient({ url: this.getRoochNodeUrl() });
+
+    // Initialize cursor object for pagination
+    const cursor = {
+      isNextPage: true,
+      data: {
+        tx_order: "",
+        state_index: "",
+      },
+    };
+
+    // Array to store skipped requests (those with response_status === 0)
+    let skippedRequests = [];
+
+    // Continue fetching pages until there are no more items
+    while (cursor.isNextPage) {
+      try {
+        // Query for object states with pagination
+        const query = await client.queryObjectStates({
+          filter: {
+            object_type: `${this.oracleAddress}::oracles::Request`,
+          },
+          limit: "100",
+          cursor: cursor.data.state_index.length === 0 ? null : cursor.data,
+          queryOption: {
+            decode: true,
+          },
+        });
+
+        if (query.data.length === 0) {
+          break; // No more items, exit the loop
+        }
+
+        // Extract and filter skipped requests (those with response_status === 0)
+        const _skippedRequests = query.data
+          .map((elem) => {
+            return {
+              ...elem.decoded_value?.value,
+              request_id: elem.id,
+              fullData: "",
+            } as any;
+          })
+          .filter((elem) => elem.response_status === 0);
+
+        // Combine new skipped requests with existing ones
+        skippedRequests = _skippedRequests.concat(_skippedRequests);
+
+        // Update cursor for next page
+        cursor.data = query.next_cursor ?? {
+          tx_order: "",
+          state_index: "",
+        };
+
+        // Check if there's more data to fetch
+        cursor.isNextPage = query.has_next_page;
+      } catch (error) {
+        log.error({ error });
+        break; // Exit the loop on any error
+      }
+    }
+
+    // Process all skipped requests concurrently
+    await Promise.all(
+      skippedRequests.map(async (event) => {
+        const data = await this.processRequestAddedEvent(event);
+        if (data) {
+          try {
+            // Send fulfillment response
+            const response = await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
+            log.debug({ response }); // Log the response
+          } catch (err) {
+            log.error({ err }); // Log any errors during fulfillment
+          }
+        }
+      }),
+    );
+
+    return skippedRequests; // Return the list of processed requests
+  }
+
   getRoochNodeUrl() {
     return this.chainId === "pre-mainnet" ? "https://main-seed.rooch.network" : getRoochNodeUrl(this.chainId);
   }
@@ -93,8 +182,8 @@ export default class RoochIndexer extends Indexer {
         };
         return data;
       });
-    } catch (error) {
-      log.error("Error fetching events", error);
+    } catch (error: any) {
+      log.error("Error fetching events", { error: error?.message });
       return [];
     }
   }
@@ -111,7 +200,6 @@ export default class RoochIndexer extends Indexer {
     const client = new RoochClient({
       url: this.getRoochNodeUrl(),
     });
-    log.debug({ notify: data.notify });
 
     const view = await client.executeViewFunction({
       target: `${this.oracleAddress}::oracles::get_response_status`,
@@ -134,8 +222,6 @@ export default class RoochIndexer extends Indexer {
       signer: this.keyPair,
     });
 
-    log.debug({ execution_info: receipt.execution_info });
-
     try {
       if ((data.notify?.length ?? 0) > 66) {
         const tx = new Transaction();
@@ -147,8 +233,6 @@ export default class RoochIndexer extends Indexer {
           transaction: tx,
           signer: this.keyPair,
         });
-
-        log.debug(JSON.stringify(receipt));
       }
     } catch (err) {
       log.error(err);
@@ -169,8 +253,6 @@ export default class RoochIndexer extends Indexer {
       chain: this.getChainId(),
       status,
     };
-
-    log.debug({ eventHandleId: event.fullData.event_id.event_handle_id, eventSeq: +event.fullData.event_id.event_seq });
 
     await prismaClient.events.create({
       data: {
