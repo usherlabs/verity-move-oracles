@@ -19,7 +19,7 @@ import { log } from "./logger";
     env.rooch.chainId.map((chain) => {
       const rooch = new RoochIndexer(env.rooch.privateKey, chain, env.rooch.oracleAddress);
       new CronJob(
-        "0 * * * * *",
+        "0 * * * *",
         () => {
           rooch.sendUnfulfilledRequests();
         },
