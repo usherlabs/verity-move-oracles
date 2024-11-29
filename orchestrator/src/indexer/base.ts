@@ -44,7 +44,7 @@ export abstract class Indexer {
   }
 
   applyAuthorizationHeader(hostname: string): string | undefined {
-    if (ALLOWED_HOST.includes(hostname) && xTwitterInstance.isInitialized()) {
+    if (ALLOWED_HOST.includes(hostname)) {
       const token = xTwitterInstance.getAccessToken();
       return `Bearer ${token}`;
     }
@@ -164,21 +164,41 @@ export abstract class Indexer {
 
     // Fetch the latest events from the Aptos Oracles Contract
     const newRequestsEvents = await this.fetchRequestAddedEvents(Number(latestCommit?.eventSeq ?? 0) ?? 0);
+    for (let i = 0; i < newRequestsEvents.length; i++) {
+      try {
+        if (i > 0) await new Promise((resolve) => setTimeout(resolve, xTwitterInstance.getRequestRate));
 
-    await Promise.all(
-      newRequestsEvents.map(async (event) => {
+        const event = newRequestsEvents[i];
         const data = await this.processRequestAddedEvent(event);
+
         if (data) {
           try {
             await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
-            // TODO: Use the notify parameter to send transaction to the contract and function to marked in the request event
             await this.save(event, data, RequestStatus.SUCCESS);
           } catch (err: any) {
             log.error({ err: err.message });
             await this.save(event, data, RequestStatus.FAILED);
           }
         }
-      }),
-    );
+      } catch (error) {
+        console.error(`Error processing event ${i}:`, error);
+      }
+    }
+
+    // await Promise.all(
+    //   newRequestsEvents.map(async (event) => {
+    //     const data = await this.processRequestAddedEvent(event);
+    //     if (data) {
+    //       try {
+    //         await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
+    //         // TODO: Use the notify parameter to send transaction to the contract and function to marked in the request event
+    //         await this.save(event, data, RequestStatus.SUCCESS);
+    //       } catch (err: any) {
+    //         log.error({ err: err.message });
+    //         await this.save(event, data, RequestStatus.FAILED);
+    //       }
+    //     }
+    //   }),
+    // );
   }
 }
