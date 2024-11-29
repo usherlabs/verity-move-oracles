@@ -1,4 +1,5 @@
 import env from "@/env";
+import { instance as xTwitterInstance } from "@/integrations/xtwitter";
 import { log } from "@/logger";
 import type { IEvent, IRequestAdded, JsonRpcResponse, ProcessedRequestAdded, RoochNetwork } from "@/types";
 import { decodeNotifyValue } from "@/util";
@@ -95,9 +96,26 @@ export default class RoochIndexer extends Indexer {
       }
     }
 
-    // Process all skipped requests concurrently
-    await Promise.all(
-      skippedRequests.map(async (event) => {
+    // // Process all skipped requests concurrently
+    // await Promise.all(
+    //   skippedRequests.map(async (event) => {
+    //     const data = await this.processRequestAddedEvent(event);
+    //     if (data) {
+    //       try {
+    //         // Send fulfillment response
+    //         const response = await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
+    //         log.debug({ response }); // Log the response
+    //       } catch (err) {
+    //         log.error({ err }); // Log any errors during fulfillment
+    //       }
+    //     }
+    //   }),
+    // );
+
+    for (let i = 0; i < skippedRequests.length; i++) {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, xTwitterInstance.getRequestRate));
+        const event = skippedRequests[i];
         const data = await this.processRequestAddedEvent(event);
         if (data) {
           try {
@@ -108,8 +126,10 @@ export default class RoochIndexer extends Indexer {
             log.error({ err }); // Log any errors during fulfillment
           }
         }
-      }),
-    );
+      } catch (err) {
+        log.error({ err }); // Log any errors during fulfillment
+      }
+    }
 
     return skippedRequests; // Return the list of processed requests
   }

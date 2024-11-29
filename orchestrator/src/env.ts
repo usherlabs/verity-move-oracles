@@ -23,8 +23,7 @@ const baseConfig = {
   ecdsaPrivateKey: process.env.SENTRY_DSN ?? "",
   batchSize: process.env.BATCH_SIZE ?? 1000,
   // Integrations
-  xApiSecret: process.env.X_API_SECRET ?? "",
-  xApiKey: process.env.X_API_KEY ?? "",
+  xBearerToken: process.env.X_BEARER_TOKEN ?? "",
 };
 
 interface IEnvVars {
@@ -41,8 +40,7 @@ interface IEnvVars {
   sentryDSN?: string;
   ecdsaPrivateKey?: string;
   batchSize: number;
-  xApiKey: string;
-  xApiSecret: string;
+  xBearerToken: string;
 }
 
 const envVarsSchema = Joi.object({
@@ -91,8 +89,7 @@ const envVarsSchema = Joi.object({
   aptosIndexerCron: Joi.string().default("*/5 * * * * *"),
 
   // Integrations
-  xApiSecret: Joi.string().allow("").required(),
-  xApiKey: Joi.string().allow("").required(),
+  xBearerToken: Joi.string().allow("").required(),
 
   // Common
   sentryDSN: Joi.string().allow("", null),
@@ -115,8 +112,7 @@ export default {
   ecdsaPrivateKey: envVars.ecdsaPrivateKey,
   sentryDSN: envVars.sentryDSN,
   integrations: {
-    xApiSecret: envVars.xApiSecret,
-    xApiKey: envVars.xApiKey,
+    xBearerToken: envVars.xBearerToken,
   },
   rooch: {
     chainId: envVars.roochChainId,
