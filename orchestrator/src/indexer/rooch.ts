@@ -158,7 +158,14 @@ export default class RoochIndexer extends Indexer {
           id: 101,
           jsonrpc: "2.0",
           method: "rooch_getEventsByEventHandle",
-          params: [`${this.oracleAddress}::oracles::RequestAdded`, cursor, `${env.batchSize}`, false, { decode: true }],
+          params: [
+            `${this.oracleAddress}::oracles::RequestAdded`,
+            cursor === 0 ? null : cursor,
+
+            `${env.batchSize}`,
+            false,
+            { decode: true },
+          ],
         },
         {
           headers: {
