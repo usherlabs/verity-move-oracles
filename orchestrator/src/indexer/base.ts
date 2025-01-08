@@ -9,7 +9,6 @@ import { isValidJson } from "@/util";
 import axios, { type AxiosResponse } from "axios";
 import prismaClient from "../../prisma";
 
-const ALLOWED_HOST = [...xTwitterInstance.hosts,...openAIInstance.hosts];
 
 // Abstract base class
 export abstract class Indexer {
@@ -46,9 +45,12 @@ export abstract class Indexer {
   }
 
   applyAuthorizationHeader(url: URL): string | undefined {
-    url.pathname
-
-    if (ALLOWED_HOST.includes(url.hostname.toLowerCase())) {
+  
+    if (xTwitterInstance.isApprovedPath(url)) {
+      const token = xTwitterInstance.getAccessToken();
+      return `Bearer ${token}`;
+    }
+    if (openAIInstance.isApprovedPath(url)) {
       const token = xTwitterInstance.getAccessToken();
       return `Bearer ${token}`;
     }
@@ -88,10 +90,10 @@ export abstract class Indexer {
     }
     const url = data.params.url?.includes("http") ? data.params.url : `https://${data.params.url}`;
     try {
-      const _url = new URL(url);
+      const url_object = new URL(url);
 
-      if (!ALLOWED_HOST.includes(_url.hostname.toLowerCase())) {
-        return { status: 406, message: `${_url} is supposed by this orchestrator` };
+      if (!this.applyAuthorizationHeader(url_object)) {
+        return { status: 406, message: `${url_object} is supposed by this orchestrator` };
       }
     } catch (err) {
       return { status: 406, message: `Invalid Domain Name` };

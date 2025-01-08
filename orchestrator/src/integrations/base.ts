@@ -16,6 +16,11 @@ export class BasicBearerAPIHandler {
       return this.rate;
     }
 
+    isApprovedPath(url:URL): boolean{
+      return this.hosts.includes(url.hostname.toLowerCase())&& 
+      this.supported_paths.filter(path=>url.pathname.toLowerCase().startsWith(path)),length>0
+    }
+
     getAccessToken(): string | null {
       return this.accessToken;
     }
