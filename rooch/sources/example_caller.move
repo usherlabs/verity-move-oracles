@@ -11,6 +11,8 @@ module verity_test_foreign_module::example_caller {
     use std::vector;
     use std::string::String;
     use verity::oracles::{Self as Oracles};
+    use rooch_framework::gas_coin::RGas;
+    use rooch_framework::account_coin_store;
 
     struct GlobalParams has key {
       pending_requests: vector<ObjectID>,
@@ -35,18 +37,21 @@ module verity_test_foreign_module::example_caller {
     }
 
     public entry fun request_data(
+        from: &signer,
         url: String,
         method: String,
         headers: String,
         body: String,
         pick: String,
-        oracle: address
+        oracle: address,
+        amount: u256
     ) {
         let http_request = Oracles::build_request(url, method, headers, body);
 
         // We're passing the address and function identifier of the recipient address. in this from <module_name>::<function_name>
         // If you do not want to pay for the Oracle to notify your contract, you can pass in option::none() as the argument.
-        let request_id = Oracles::new_request(http_request, pick, oracle, Oracles::with_notify(@verity_test_foreign_module, b"example_caller::receive_data"));
+        let payment = account_coin_store::withdraw<RGas>(from, amount);
+        let request_id = Oracles::new_request(http_request, pick, oracle, Oracles::with_notify(@verity_test_foreign_module, b"example_caller::receive_data"),payment);
         // let no_notify_request_id = Oracles::new_request(http_request, pick, oracle, Oracles::without_notify());
         let params = account::borrow_mut_resource<GlobalParams>(@verity_test_foreign_module);
         vector::push_back(&mut params.pending_requests, request_id);

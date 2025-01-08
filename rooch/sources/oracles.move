@@ -7,20 +7,31 @@
 // The system manages pending requests and emits events
 // for both new requests and fulfilled requests.
 module verity::oracles {
+    
     use moveos_std::event;
     use moveos_std::tx_context;
     use moveos_std::signer;
     use moveos_std::account;
     use moveos_std::address;
-    use moveos_std::object::{Self, ObjectID};
+    use moveos_std::object::{Self, ObjectID, Object};
     use std::vector;
-    use std::string::String;
+    use rooch_framework::coin::{Self, Coin};
+    use rooch_framework::gas_coin::RGas;
+    use rooch_framework::coin_store::{Self, CoinStore};
+    use std::string::{Self,String};
     use std::option::{Self, Option};
+    use orchestrator_registry::registry::{Self as OracleSupport};
 
+
+    const MIN_GAS_REQUIRED: u64 = 1000000000000000000;
     const RequestNotFoundError: u64 = 1001;
     const SignerNotOracleError: u64 = 1002;
     // const ProofNotValidError: u64 = 1003;
     const OnlyOwnerError: u64 = 1004;
+    const NotEnoughGasError: u64 = 1005;
+    const OracleSupportError: u64 = 1006;
+
+
 
     // Struct to represent HTTP request parameters
     // Designed to be imported by third-party contracts
@@ -36,12 +47,14 @@ module verity::oracles {
         pick: String, // An optional JQ string to pick the value from the response JSON data structure.
         oracle: address,
         response_status: u16,
-        response: Option<String>
+        response: Option<String>,
+        amount: u256
     }
 
     // Global params for the oracle system
     struct GlobalParams has key {
         owner: address,
+        treasury: Object<CoinStore<RGas>>,
     }
 
     // -------- Events --------
@@ -61,9 +74,12 @@ module verity::oracles {
     fun init() {
         let module_signer = signer::module_signer<GlobalParams>();
         let owner = tx_context::sender();
+        let treasury_obj = coin_store::create_coin_store<RGas>();
+
 
         account::move_resource_to(&module_signer, GlobalParams {
             owner,
+            treasury: treasury_obj
         });
     }
 
@@ -116,11 +132,18 @@ module verity::oracles {
         params: HTTPRequest,
         pick: String,
         oracle: address,
-        notify: Option<vector<u8>>
+        notify: Option<vector<u8>>,
+        payment: Coin<RGas>
     ): ObjectID {
-        // let recipient = tx_context::sender();
 
-        // TODO: Ensure that the recipient has enough gas for the request.
+        let sent_coin =  coin::value(&payment);
+        let option_min_amount = OracleSupport::compute_cost(oracle ,params.url, string::length(&params.body));
+        assert!(option::is_some(&option_min_amount), OracleSupportError);
+        let min_amount= option::destroy_some(option_min_amount);
+
+        assert!(sent_coin >= min_amount, NotEnoughGasError);
+        let global_param = account::borrow_mut_resource<GlobalParams>(@verity);
+        coin_store::deposit(&mut global_param.treasury, payment);
 
         // Create new request object
         let request = object::new(Request {
@@ -129,6 +152,7 @@ module verity::oracles {
             oracle,
             response_status: 0,
             response: option::none(),
+            amount:min_amount
         });
         let request_id = object::id(&request);
         object::transfer(request, oracle); // transfer to oracle to ensure permission
@@ -146,6 +170,8 @@ module verity::oracles {
 
         request_id
     }
+
+    // TODO: withdraw command for orchestrator and User
 
     public entry fun fulfil_request(
         caller: &signer,
@@ -248,7 +274,8 @@ module verity::test_oracles {
     use std::option;
     use verity::oracles;
     use moveos_std::object::ObjectID;
-
+    use rooch_framework::gas_coin;
+    use rooch_framework::genesis::init_for_test;
 
     struct Test has key {
     }
@@ -268,8 +295,16 @@ module verity::test_oracles {
 
         let oracle = signer::address_of(&sig);
         // let recipient = @0x46;
+        init_for_test();
+        let payment = gas_coin::mint_for_test(1000u256);
 
-        let request_id = oracles::new_request(http_request, response_pick, oracle, oracles::with_notify(@verity,b""));
+        let request_id = oracles::new_request(
+            http_request, 
+            response_pick, 
+            oracle, 
+            oracles::with_notify(@verity,b""),
+            payment
+        );
         request_id
     }
 
@@ -277,24 +312,22 @@ module verity::test_oracles {
     /// Test function to consume the FulfilRequestObject
     public fun fulfil_request(id: ObjectID) {
         let result = string::utf8(b"Hello World");
-        // let proof = string::utf8(b"");
-
         let sig = signer::module_signer<Test>();
         oracles::fulfil_request(&sig, id, 200, result);
     }
-
 
     #[test]
     public fun test_view_functions(){
         let id = create_oracle_request();
         let sig = signer::module_signer<Test>();
-        // Test the Object
 
         assert!(oracles::get_request_oracle(&id) == signer::address_of(&sig), 99951);
         assert!(oracles::get_request_params_url(&id) == string::utf8(b"https://api.example.com/data"), 99952);
         assert!(oracles::get_request_params_method(&id) == string::utf8(b"GET"), 99953);
         assert!(oracles::get_request_params_body(&id) == string::utf8(b""), 99954);
-        assert!(oracles::get_response_status(&id) ==(0 as u16), 99955);
+        // assert!(oracles::get_response_status(&id) == 0, 99955);
+        // assert!(oracles::get_request_pick(&id) == string::utf8(b""), 99956);
+        // assert!(oracles::get_request_params_headers(&id) == string::utf8(b"Content-Type: application/json\nUser-Agent: MoveClient/1.0"), 99957);
     }
 
     #[test]

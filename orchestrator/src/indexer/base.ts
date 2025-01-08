@@ -3,11 +3,13 @@ import { type ProcessedRequestAdded, RequestStatus } from "@/types";
 import { run as jqRun } from "node-jq";
 
 import { instance as xTwitterInstance } from "@/integrations/xtwitter";
+import { instance as openAIInstance } from "@/integrations/openAI";
+
 import { isValidJson } from "@/util";
 import axios, { type AxiosResponse } from "axios";
 import prismaClient from "../../prisma";
 
-const ALLOWED_HOST = [...xTwitterInstance.hosts];
+const ALLOWED_HOST = [...xTwitterInstance.hosts,...openAIInstance.hosts];
 
 // Abstract base class
 export abstract class Indexer {
@@ -43,8 +45,10 @@ export abstract class Indexer {
     return this.oracleAddress;
   }
 
-  applyAuthorizationHeader(hostname: string): string | undefined {
-    if (ALLOWED_HOST.includes(hostname)) {
+  applyAuthorizationHeader(url: URL): string | undefined {
+    url.pathname
+
+    if (ALLOWED_HOST.includes(url.hostname.toLowerCase())) {
       const token = xTwitterInstance.getAccessToken();
       return `Bearer ${token}`;
     }
@@ -72,8 +76,7 @@ export abstract class Indexer {
    */
   async processRequestAddedEvent<T>(data: ProcessedRequestAdded<T>) {
     log.debug("processing request:", data.request_id);
-    const token = xTwitterInstance.getAccessToken();
-
+    
     if (data.oracle.toLowerCase() !== this.getOrchestratorAddress().toLowerCase()) {
       log.debug(
         "skipping request as it's not for this Oracle:",
@@ -88,12 +91,13 @@ export abstract class Indexer {
       const _url = new URL(url);
 
       if (!ALLOWED_HOST.includes(_url.hostname.toLowerCase())) {
-        return { status: 406, message: `${_url.hostname} is supposed by this orchestrator` };
+        return { status: 406, message: `${_url} is supposed by this orchestrator` };
       }
     } catch (err) {
       return { status: 406, message: `Invalid Domain Name` };
     }
-
+    
+    const token = xTwitterInstance.getAccessToken();
     try {
       let request: AxiosResponse<any, any>;
       if (isValidJson(data.params.headers)) {
