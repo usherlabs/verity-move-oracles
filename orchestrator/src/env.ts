@@ -41,6 +41,7 @@ interface IEnvVars {
   ecdsaPrivateKey?: string;
   batchSize: number;
   xBearerToken: string;
+  openAIToken:string;
 }
 
 const envVarsSchema = Joi.object({
@@ -90,6 +91,8 @@ const envVarsSchema = Joi.object({
 
   // Integrations
   xBearerToken: Joi.string().allow("").required(),
+  openAIToken: Joi.string().allow("").required(),
+
 
   // Common
   sentryDSN: Joi.string().allow("", null),
@@ -113,6 +116,7 @@ export default {
   sentryDSN: envVars.sentryDSN,
   integrations: {
     xBearerToken: envVars.xBearerToken,
+    openAIToken: envVars.
   },
   rooch: {
     chainId: envVars.roochChainId,
