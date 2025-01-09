@@ -24,6 +24,7 @@ const baseConfig = {
   batchSize: process.env.BATCH_SIZE ?? 1000,
   // Integrations
   xBearerToken: process.env.X_BEARER_TOKEN ?? "",
+  openAIToken: process.env.OPEN_AI_TOKEN ?? "",
 };
 
 interface IEnvVars {
