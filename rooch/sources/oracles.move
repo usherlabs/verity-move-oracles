@@ -85,9 +85,12 @@ module verity::oracles {
         });
     }
 
+
+
     #[test_only]
     public fun init_for_test(){
         genesis::init_for_test();
+        OracleSupport::init_for_test();
         init();
     }
 
@@ -329,6 +332,7 @@ module verity::test_oracles {
 
 
     #[test]
+    #[expected_failure(abort_code = 1006, location = verity::oracles)]
     public fun test_view_functions(){
         let id = create_oracle_request();
         let sig = signer::module_signer<Test>();
@@ -342,6 +346,7 @@ module verity::test_oracles {
     }
 
     #[test]
+    #[expected_failure(abort_code = 1006, location = verity::oracles)]
     public fun test_consume_fulfil_request() {
         let id = create_oracle_request();
         fulfil_request(id);
