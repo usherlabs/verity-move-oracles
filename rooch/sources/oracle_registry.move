@@ -29,6 +29,11 @@ module orchestrator_registry::registry {
         });
     }
 
+    #[test_only]
+    public fun init_for_test(){
+        init();
+    }
+
     // Events
     struct URLSupportAdded has copy, drop {
         orchestrator: address,
@@ -179,6 +184,7 @@ module orchestrator_registry::test_registry {
     #[test]
     fun test_add_supported_url() {
         let test = signer::module_signer<Test>();
+        registry::init_for_test();
         
         // Test adding new URL support
         let url = string::utf8(b"https://api.example.com");
@@ -195,6 +201,8 @@ module orchestrator_registry::test_registry {
     #[test]
     fun test_update_existing_url() {
         let test = signer::module_signer<Test>();
+        registry::init_for_test();
+
         
         // Test cost computation
         let url = string::utf8(b"https://api.example.com");
@@ -211,6 +219,7 @@ module orchestrator_registry::test_registry {
     #[test]
     fun test_remove_supported_url() {
         let test = signer::module_signer<Test>();
+        registry::init_for_test();
         
         // Test removing URL support
         let url = string::utf8(b"https://api.example.com");
@@ -224,6 +233,7 @@ module orchestrator_registry::test_registry {
     #[test]
     fun test_compute_cost() {
         let test = signer::module_signer<Test>();
+        registry::init_for_test();
         
         // Test cost computation
         let url = string::utf8(b"https://api.example.com");
@@ -237,6 +247,7 @@ module orchestrator_registry::test_registry {
     #[test]
     fun test_compute_cost_nonexistent_url() {
         let test = signer::module_signer<Test>();
+        registry::init_for_test();
         
         // Test cost computation for non-existent URL
         let url = string::utf8(b"https://nonexistent.com");
