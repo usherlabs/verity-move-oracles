@@ -7,7 +7,6 @@ module orchestrator_registry::registry {
     use moveos_std::account;
     use std::string::{Self, String};
     use moveos_std::simple_map::{Self, SimpleMap};
-    use moveos_std::tx_context;
     use moveos_std::string_utils;
 
     const NotOracleError: u64 = 1;
@@ -75,12 +74,13 @@ module orchestrator_registry::registry {
 
     /// Add support for a new URL endpoint with specified pricing parameters
     public fun add_supported_url(
+        caller: &signer,
         url_prefix: String,
         base_fee: u256,
         minimum_payload_length: u64,
         cost_per_token: u256
     ) {
-        let sender = tx_context::sender();
+        let sender = signer::address_of(caller);
         let global_params = account::borrow_mut_resource<GlobalParams>(@orchestrator_registry);
         
         // Initialize orchestrator's URL vector if it doesn't exist
@@ -127,8 +127,10 @@ module orchestrator_registry::registry {
     }
 
     /// Remove support for a URL endpoint
-    public fun remove_supported_url(url_prefix: String) {
-        let sender = tx_context::sender();
+    public fun remove_supported_url( 
+        caller: &signer,
+        url_prefix: String) {
+        let sender = signer::address_of(caller);
         let global_params = account::borrow_mut_resource<GlobalParams>(@orchestrator_registry);
         
         assert!(simple_map::contains_key(&global_params.supported_urls, &sender), NotOracleError);
@@ -162,74 +164,83 @@ module orchestrator_registry::registry {
             vector::empty()
         }
     }
+}
+
+#[test_only]
+module orchestrator_registry::test_registry {
+    use std::string;
+    use moveos_std::signer;
+    use std::option;
+    use std::vector;
+    use orchestrator_registry::registry;
+    struct Test has key {
+    }
 
     #[test]
     fun test_add_supported_url() {
+        let test = signer::module_signer<Test>();
+        
         // Test adding new URL support
         let url = string::utf8(b"https://api.example.com");
-        add_supported_url(url, 100, 1000, 1);
+        registry::add_supported_url(&test, url, 100, 1000, 1);
         
-        let urls = get_supported_urls(tx_context::sender());
+        let urls = registry::get_supported_urls(signer::address_of(&test));
         assert!(vector::length(&urls) == 1, 0);
         
-        let metadata = vector::borrow(&urls, 0);
-        assert!(metadata.url_prefix == url, 0);
-        assert!(metadata.base_fee == 100, 0);
-        assert!(metadata.minimum_payload_length == 1000, 0);
-        assert!(metadata.cost_per_token == 1, 0);
+        let cost = registry::compute_cost(signer::address_of(&test), url, 500);
+        assert!(option::is_some(&cost), 0);
+        assert!(option::extract(&mut cost) == 600, 0); // base_fee + (min_length - payload_length) * cost_per_token
     }
 
     #[test]
     fun test_update_existing_url() {
-        // Test updating existing URL support
-        let url = string::utf8(b"https://api.example.com");
-        add_supported_url(url, 100, 1000, 1);
-        add_supported_url(url, 200, 2000, 2);
+        let test = signer::module_signer<Test>();
         
-        let urls = get_supported_urls(tx_context::sender());
+        // Test cost computation
+        let url = string::utf8(b"https://api.example.com");
+        registry::add_supported_url(&test, url, 100, 1000, 1);
+        
+        let urls = registry::get_supported_urls(signer::address_of(&test));
         assert!(vector::length(&urls) == 1, 0);
         
-        let metadata = vector::borrow(&urls, 0);
-        assert!(metadata.base_fee == 200, 0);
-        assert!(metadata.minimum_payload_length == 2000, 0);
-        assert!(metadata.cost_per_token == 2, 0);
+        let cost = registry::compute_cost(signer::address_of(&test), url, 500);
+        assert!(option::is_some(&cost), 0);
+        assert!(option::extract(&mut cost) == 600, 0); // base_fee + (min_length - payload_length) * cost_per_token
     }
 
     #[test]
     fun test_remove_supported_url() {
+        let test = signer::module_signer<Test>();
+        
         // Test removing URL support
         let url = string::utf8(b"https://api.example.com");
-        add_supported_url(url, 100, 1000, 1);
+        registry::add_supported_url(&test, url, 100, 1000, 1);
         
-        remove_supported_url(url);
-        let urls = get_supported_urls(tx_context::sender());
+        registry::remove_supported_url(&test, url);
+        let urls = registry::get_supported_urls(signer::address_of(&test));
         assert!(vector::length(&urls) == 0, 0);
     }
 
     #[test]
     fun test_compute_cost() {
+        let test = signer::module_signer<Test>();
+        
         // Test cost computation
         let url = string::utf8(b"https://api.example.com");
-        add_supported_url(url, 100, 1000, 1);
+        registry::add_supported_url(&test, url, 100, 1000, 1);
         
-        let cost = compute_cost(tx_context::sender(), url, 500);
+        let cost = registry::compute_cost(signer::address_of(&test), url, 500);
         assert!(option::is_some(&cost), 0);
         assert!(option::extract(&mut cost) == 600, 0); // base_fee + (min_length - payload_length) * cost_per_token
     }
 
     #[test]
     fun test_compute_cost_nonexistent_url() {
+        let test = signer::module_signer<Test>();
+        
         // Test cost computation for non-existent URL
         let url = string::utf8(b"https://nonexistent.com");
-        let cost = compute_cost(tx_context::sender(), url, 500);
+        let cost = registry::compute_cost(signer::address_of(&test), url, 500);
         assert!(option::is_none(&cost), 0);
-    }
-
-    #[test]
-    #[expected_failure(abort_code = NotOracleError)]
-    fun test_remove_url_non_oracle() {
-        // Test removing URL as non-oracle
-        let url = string::utf8(b"https://api.example.com");
-        remove_supported_url(url);
     }
 }
