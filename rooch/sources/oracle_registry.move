@@ -1,6 +1,7 @@
 module orchestrator_registry::registry {
 
     use std::option::{Self, Option};
+    use moveos_std::signer;
     use std::vector;
     use moveos_std::event;
     use moveos_std::account;
@@ -22,6 +23,13 @@ module orchestrator_registry::registry {
         supported_urls: SimpleMap<address, vector<SupportedURLMetadata>>,
     }
 
+    fun init() {
+         let module_signer = signer::module_signer<GlobalParams>();
+        account::move_resource_to(&module_signer, GlobalParams {
+            supported_urls: simple_map::new(),
+        });
+    }
+
     // Events
     struct URLSupportAdded has copy, drop {
         orchestrator: address,
@@ -35,6 +43,8 @@ module orchestrator_registry::registry {
         orchestrator: address,
         url: String
     }
+
+
 
     /// Compute the cost for an orchestrator request based on payload length
     public fun compute_cost(
