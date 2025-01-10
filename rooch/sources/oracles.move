@@ -162,7 +162,7 @@ module verity::oracles {
             params,
             pick,
             oracle,
-            response_status: 0,
+            response_status: 0, 
             response: option::none(),
             amount:min_amount
         });

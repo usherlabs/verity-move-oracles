@@ -66,9 +66,13 @@ module orchestrator_registry::registry {
             let i = 0;
             while (i < vector::length(orchestrator_urls)) {
                 let orchestrator_url = vector::borrow(orchestrator_urls, i);
-                let prefix = string::sub_string(&string_utils::to_lower_case(&orchestrator_url.url_prefix), 0,string::length(&url) );
-                if (!(string::index_of(&url, &prefix) == string::length(&url))) {
-                    let chargeable_token: u256 = ((orchestrator_url.minimum_payload_length as u256) - (payload_length as u256));
+                let prefix = string_utils::to_lower_case(&orchestrator_url.url_prefix);
+                // if index is 0 then prefix is a prefix of URl since its at index 0
+                if ((string::index_of(&url, &prefix) == 0)) {
+                    if(orchestrator_url.minimum_payload_length > payload_length){
+                        return option::none()
+                    };
+                    let chargeable_token: u256 = ((payload_length as u256)-(orchestrator_url.minimum_payload_length as u256) );
                     return option::some(orchestrator_url.base_fee + (chargeable_token * orchestrator_url.cost_per_token))
                 };
                 i = i + 1;
@@ -188,7 +192,7 @@ module orchestrator_registry::test_registry {
         
         // Test adding new URL support
         let url = string::utf8(b"https://api.example.com");
-        registry::add_supported_url(&test, url, 100, 1000, 1);
+        registry::add_supported_url(&test, url, 100, 0, 1);
         
         let urls = registry::get_supported_urls(signer::address_of(&test));
         assert!(vector::length(&urls) == 1, 0);
@@ -206,7 +210,7 @@ module orchestrator_registry::test_registry {
         
         // Test cost computation
         let url = string::utf8(b"https://api.example.com");
-        registry::add_supported_url(&test, url, 100, 1000, 1);
+        registry::add_supported_url(&test, url, 100, 0, 1);
         
         let urls = registry::get_supported_urls(signer::address_of(&test));
         assert!(vector::length(&urls) == 1, 0);
@@ -223,7 +227,7 @@ module orchestrator_registry::test_registry {
         
         // Test removing URL support
         let url = string::utf8(b"https://api.example.com");
-        registry::add_supported_url(&test, url, 100, 1000, 1);
+        registry::add_supported_url(&test, url, 100, 0, 1);
         
         registry::remove_supported_url(&test, url);
         let urls = registry::get_supported_urls(signer::address_of(&test));
@@ -237,7 +241,7 @@ module orchestrator_registry::test_registry {
         
         // Test cost computation
         let url = string::utf8(b"https://api.example.com");
-        registry::add_supported_url(&test, url, 100, 1000, 1);
+        registry::add_supported_url(&test, url, 100, 0, 1);
         
         let cost = registry::compute_cost(signer::address_of(&test), url, 500);
         assert!(option::is_some(&cost), 0);
