@@ -233,22 +233,24 @@ module verity_test_foreign_module::test_foreign_module {
     fun test_request_with_body() {
         setup_test();
         let test_signer = moveos_std::signer::module_signer<Test>();
+        let test_orchestrator = moveos_std::signer::module_signer<TestOrchestrator>();
         
-        let url = std::string::utf8(b"https://api.test.com");
+        let url = std::string::utf8(b"https://api.test.com/yud");
         let method = std::string::utf8(b"POST");
         let headers = std::string::utf8(b"Content-Type: application/json");
         let body = std::string::utf8(b"{\"key\":\"value\"}");
-        let pick = std::string::utf8(b"$.data");
-        let oracle = @0x1;
+        let pick = std::string::utf8(b".data");
+        let oracle = signer::address_of(&test_orchestrator);
         let amount = 1000u256;
 
 
         gas_coin::faucet_entry(&test_signer, amount);
 
 
+        registry::add_supported_url(&test_orchestrator, std::string::utf8(b"https://api.test.com/"), 100, 0, 1);
         request_data(&test_signer, url, method, headers, body, pick, oracle, amount);
+
+        assert!(pending_requests_count() == 1, 4);
         
-        let params = account::borrow_resource<GlobalParams>(@verity_test_foreign_module);
-        assert!(vector::length(&params.pending_requests) == 1, 3);
     }
 }
