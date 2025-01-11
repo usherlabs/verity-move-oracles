@@ -1,11 +1,11 @@
 // Copyright (c) Usher Labs
 // SPDX-License-Identifier: LGPL-2.1
 
-// This module implements an oracle system for Verity.
-// It allows users to create new requests for off-chain data,
-// which are then fulfilled by designated oracles.
-// The system manages pending requests and emits events
-// for both new requests and fulfilled requests.
+/// This module implements an oracle system for Verity.
+/// It allows users to create new requests for off-chain data,
+/// which are then fulfilled by designated oracles.
+/// The system manages pending requests and emits events
+/// for both new requests and fulfilled requests.
 module verity::oracles {
     
     use moveos_std::event;
@@ -19,7 +19,7 @@ module verity::oracles {
     use rooch_framework::gas_coin::RGas;
     use rooch_framework::account_coin_store;
     use rooch_framework::coin_store::{Self, CoinStore};
-    use std::string::{Self,String};
+    use std::string::{Self, String};
     use std::option::{Self, Option};
     use moveos_std::simple_map::{Self, SimpleMap};
 
@@ -27,22 +27,19 @@ module verity::oracles {
     use rooch_framework::genesis;
     use verity::registry::{Self as OracleSupport};
 
-
-    const MIN_GAS_REQUIRED: u64 = 1000000000000000000;
     const RequestNotFoundError: u64 = 1001;
     const SignerNotOracleError: u64 = 1002;
     // const ProofNotValidError: u64 = 1003;
     const OnlyOwnerError: u64 = 1004;
     const NotEnoughGasError: u64 = 1005;
     const OracleSupportError: u64 = 1006;
-    const DoubleFulfillmentError: u64= 1007;
+    const DoubleFulfillmentError: u64 = 1007;
     const InsufficientBalanceError: u64 = 1008;
     const NoBalanceError: u64 = 1009;
     const ZeroAmountError: u64 = 1010;
 
-
-    // Struct to represent HTTP request parameters
-    // Designed to be imported by third-party contracts
+    /// Struct to represent HTTP request parameters
+    /// Designed to be imported by third-party contracts
     struct HTTPRequest has store, copy, drop {
         url: String,
         method: String,
@@ -50,6 +47,7 @@ module verity::oracles {
         body: String,
     }
 
+    /// Represents an oracle request with all necessary parameters
     struct Request has key, store, copy, drop {
         params: HTTPRequest,
         pick: String, // An optional JQ string to pick the value from the response JSON data structure.
@@ -60,7 +58,7 @@ module verity::oracles {
         amount: u256
     }
 
-    // Global params for the oracle system
+    /// Global parameters for the oracle system
     struct GlobalParams has key {
         owner: address,
         treasury: Object<CoinStore<RGas>>,
@@ -68,6 +66,7 @@ module verity::oracles {
     }
 
     // -------- Events --------
+    /// Event emitted when a new request is added
     struct RequestAdded has copy, drop {
         params: HTTPRequest,
         pick: String, // An optional JQ string to pick the value from the response JSON data structure.
@@ -76,21 +75,24 @@ module verity::oracles {
         request_id: ObjectID
     }
 
+    /// Event emitted when a request is fulfilled
     struct Fulfilment has copy, drop {
         request: Request,
     }
 
-    struct WithdrawEvent has copy, drop {
+    /// Event emitted for escrow deposits/withdrawals
+    struct EscrowEvent has copy, drop {
         user: address,
         amount: u256,
+        is_deposit: bool,
     }
     // ------------------------
 
+    /// Initialize the oracle system
     fun init() {
         let module_signer = signer::module_signer<GlobalParams>();
         let owner = tx_context::sender();
         let treasury_obj = coin_store::create_coin_store<RGas>();
-
 
         account::move_resource_to(&module_signer, GlobalParams {
             owner,
@@ -99,18 +101,16 @@ module verity::oracles {
         });
     }
 
-
-
     #[test_only]
-    public fun init_for_test(){
+    /// Initialize the oracle system for testing
+    public fun init_for_test() {
         genesis::init_for_test();
         OracleSupport::init_for_test();
         init();
     }
 
-
-    // Only owner can set the verifier
-    // TODO: Move this out into it's own ownable module.
+    /// Change the owner of the oracle system
+    /// Only callable by current owner
     public entry fun set_owner(
         new_owner: address
     ) {
@@ -120,7 +120,7 @@ module verity::oracles {
         params.owner = new_owner;
     }
 
-    // Builds a request object from the provided parameters
+    /// Create a new HTTPRequest struct with the given parameters
     public fun build_request(
         url: String,
         method: String,
@@ -135,7 +135,7 @@ module verity::oracles {
         }
     }
 
-    // Inspo from https://github.com/rooch-network/rooch/blob/65f436ba16b04e479125ac414cf5c6c876a8809d/frameworks/bitcoin-move/sources/types.move#L77
+    /// Create notification data for request callbacks
     public fun with_notify(
         notify_address: address,
         notify_function: vector<u8>
@@ -147,31 +147,31 @@ module verity::oracles {
         option::some(res)
     }
 
+    /// Create empty notification data
     public fun without_notify(): Option<vector<u8>> {
         option::none()
     }
 
+    /// Internal function to create a new request
     fun create_request(
         params: HTTPRequest,
         pick: String,
         oracle: address,
         notify: Option<vector<u8>>,
         amount: u256
-    ): ObjectID{
+    ): ObjectID {
         // Create new request object
         let request = object::new(Request {
             params,
             pick,
             oracle,
-            response_status: 0, 
+            response_status: 0,
             response: option::none(),
             account_to_credit: tx_context::sender(),
             amount,
         });
         let request_id = object::id(&request);
         object::transfer(request, oracle); // transfer to oracle to ensure permission
-
-        // TODO: Move gas from recipient to module account
 
         // Emit event
         event::emit(RequestAdded {
@@ -185,9 +185,8 @@ module verity::oracles {
         return request_id
     }
 
-    /// Creates a new oracle request for arbitrary API data.
-    /// This function is intended to be called by third-party contracts
-    /// to initiate off-chain data requests.
+    /// Creates a new oracle request with direct payment
+    /// Caller must provide sufficient RGas payment
     public fun new_request_with_payment(
         params: HTTPRequest,
         pick: String,
@@ -195,12 +194,11 @@ module verity::oracles {
         notify: Option<vector<u8>>,
         payment: Coin<RGas>
     ): ObjectID {
-
-        let sent_coin =  coin::value(&payment);
+        let sent_coin = coin::value(&payment);
         // 1024 could be changed to the max string length allowed on Move
-        let option_min_amount = OracleSupport::estimated_cost(oracle ,params.url, string::length(&params.body), 1024);
+        let option_min_amount = OracleSupport::estimated_cost(oracle, params.url, string::length(&params.body), 1024);
         assert!(option::is_some(&option_min_amount), OracleSupportError);
-        let min_amount= option::destroy_some(option_min_amount);
+        let min_amount = option::destroy_some(option_min_amount);
 
         assert!(sent_coin >= min_amount, NotEnoughGasError);
         let global_param = account::borrow_mut_resource<GlobalParams>(@verity);
@@ -215,24 +213,24 @@ module verity::oracles {
         )
     }
 
+    /// Creates a new oracle request using caller's escrow balance
     public fun new_request(
         params: HTTPRequest,
         pick: String,
         oracle: address,
         notify: Option<vector<u8>>,
     ): ObjectID {
-
-        let sender= tx_context::sender();
+        let sender = tx_context::sender();
         let account_balance = get_user_balance(sender);
         // 1024 could be changed to the max string length allowed on Move
-        let option_min_amount = OracleSupport::estimated_cost(oracle ,params.url, string::length(&params.body), 1024);
+        let option_min_amount = OracleSupport::estimated_cost(oracle, params.url, string::length(&params.body), 1024);
         assert!(option::is_some(&option_min_amount), OracleSupportError);
-        let min_amount= option::destroy_some(option_min_amount);
+        let min_amount = option::destroy_some(option_min_amount);
 
         assert!(account_balance >= min_amount, NotEnoughGasError);
         let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
         let balance = simple_map::borrow_mut(&mut global_params.balances, &sender);
-        *balance = *balance-min_amount;
+        *balance = *balance - min_amount;
 
         return create_request(
             params,
@@ -243,9 +241,8 @@ module verity::oracles {
         )
     }
 
-
-
-    public entry fun deposit_to_escrow(from: &signer, amount:u256){
+    /// Deposit RGas into escrow for future oracle requests
+    public entry fun deposit_to_escrow(from: &signer, amount: u256) {
         // Check that amount is not zero
         assert!(amount > 0, ZeroAmountError);
         
@@ -257,12 +254,20 @@ module verity::oracles {
 
         if (!simple_map::contains_key(&global_params.balances, &sender)) {
             simple_map::add(&mut global_params.balances, sender, amount);
-        } else{
+        } else {
             let balance = simple_map::borrow_mut(&mut global_params.balances, &sender);
-            *balance = *balance+amount;
+            *balance = *balance + amount;
         };
+
+        // Emit deposit event
+        event::emit(EscrowEvent {
+            user: sender,
+            amount,
+            is_deposit: true,
+        });
     }
 
+    /// Withdraw RGas from escrow
     public entry fun withdraw_from_escrow(from: &signer, amount: u256) {
         // Check that amount is not zero
         assert!(amount > 0, ZeroAmountError);
@@ -290,12 +295,15 @@ module verity::oracles {
         account_coin_store::deposit(sender, withdrawal);
         
         // Emit withdraw event
-        event::emit(WithdrawEvent {
+        event::emit(EscrowEvent {
             user: sender,
             amount,
+            is_deposit: false,
         });
     }
 
+    /// Fulfill an oracle request with response data
+    /// Only callable by the designated oracle
     public entry fun fulfil_request(
         caller: &signer,
         id: ObjectID,
@@ -313,7 +321,6 @@ module verity::oracles {
         // Prevent double fulfillment
         assert!(request.response_status == 0 || option::is_none(&request.response), DoubleFulfillmentError);
 
-
         // // Verify the data and proofsin
         // assert!(verify(result, proof), ProofNotValidError);
 
@@ -321,23 +328,23 @@ module verity::oracles {
         request.response = option::some(result);
         request.response_status = response_status;
 
-        let option_fulfillment_cost= OracleSupport::estimated_cost(request.oracle ,request.params.url, string::length(&request.params.body), string::length(&result));
+        let option_fulfillment_cost = OracleSupport::estimated_cost(request.oracle, request.params.url, string::length(&request.params.body), string::length(&result));
         assert!(option::is_some(&option_fulfillment_cost), OracleSupportError);
-        let fulfillment_cost= option::destroy_some(option_fulfillment_cost);
+        let fulfillment_cost = option::destroy_some(option_fulfillment_cost);
 
         // send token to orchestrator wallet
         let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
-        let payment= coin_store::withdraw(&mut global_params.treasury, fulfillment_cost);
+        let payment = coin_store::withdraw(&mut global_params.treasury, fulfillment_cost);
 
         account_coin_store::deposit(caller_address, payment);
 
         // add extra to balance if any exists 
-        if (request.amount > fulfillment_cost &&(request.amount - fulfillment_cost)>0){
+        if (request.amount > fulfillment_cost && (request.amount - fulfillment_cost) > 0) {
             if (!simple_map::contains_key(&global_params.balances, &request.account_to_credit)) {
-                simple_map::add(&mut global_params.balances, request.account_to_credit,  request.amount - fulfillment_cost );
-            } else{
+                simple_map::add(&mut global_params.balances, request.account_to_credit, request.amount - fulfillment_cost);
+            } else {
                 let balance = simple_map::borrow_mut(&mut global_params.balances, &request.account_to_credit);
-                *balance = *balance+ request.amount - fulfillment_cost ;
+                *balance = *balance + request.amount - fulfillment_cost;
             };
         };
 
@@ -345,9 +352,7 @@ module verity::oracles {
         event::emit(Fulfilment {
             request: *request,
         });
-        
     }
-
 
     // // This is a Version 0 of the verifier.
     // public fun verify(
@@ -359,6 +364,7 @@ module verity::oracles {
     // }
 
     // ------------ HELPERS ------------
+    /// Internal helper to borrow a request object
     fun borrow_request(id: &ObjectID): &Request {
         let ref = object::borrow_object<Request>(*id);
         object::borrow(ref)
@@ -437,8 +443,8 @@ module verity::test_oracles {
     }
 
     #[test_only]
-    // Test for creating a new request
     public fun create_oracle_request(): ObjectID {
+        // Test for creating a new request
         oracles::init_for_test();
         let sig = signer::module_signer<Test>();
         let oracle = signer::address_of(&sig);
@@ -455,18 +461,18 @@ module verity::test_oracles {
         let payment = gas_coin::mint_for_test(1000u256);
 
         let request_id = oracles::new_request_with_payment(
-            http_request, 
-            response_pick, 
-            oracle, 
-            oracles::with_notify(@verity,b""),
+            http_request,
+            response_pick,
+            oracle,
+            oracles::with_notify(@verity, b""),
             payment
         );
         request_id
     }
 
     #[test_only]
-    /// Test function to consume the FulfilRequestObject
     public fun fulfil_request(id: ObjectID) {
+        // Test function to fulfill a request  
         oracles::init_for_test();
         let result = string::utf8(b"Hello World");
         // let proof = string::utf8(b"");
@@ -477,7 +483,8 @@ module verity::test_oracles {
 
     #[test]
     #[expected_failure(abort_code = 1006, location = verity::oracles)]
-    public fun test_view_functions(){
+    public fun test_view_functions() {
+        // Test view functions
         let id = create_oracle_request();
         let sig = signer::module_signer<Test>();
         // Test the Object
@@ -486,12 +493,13 @@ module verity::test_oracles {
         assert!(oracles::get_request_params_url(&id) == string::utf8(b"https://api.example.com/data"), 99952);
         assert!(oracles::get_request_params_method(&id) == string::utf8(b"GET"), 99953);
         assert!(oracles::get_request_params_body(&id) == string::utf8(b""), 99954);
-        assert!(oracles::get_response_status(&id) ==(0 as u16), 99955);
+        assert!(oracles::get_response_status(&id) == (0 as u16), 99955);
     }
 
     #[test]
     #[expected_failure(abort_code = 1006, location = verity::oracles)]
     public fun test_consume_fulfil_request() {
+        // Test request fulfillment
         let id = create_oracle_request();
         fulfil_request(id);
 
@@ -501,6 +509,7 @@ module verity::test_oracles {
 
     #[test]
     public fun test_deposit_and_withdraw() {
+        // Test escrow deposit and withdrawal
         // Initialize test environment
         oracles::init_for_test();
         let sig = signer::module_signer<Test>();
@@ -525,6 +534,7 @@ module verity::test_oracles {
     #[test]
     #[expected_failure(abort_code = 1010, location = verity::oracles)]
     public fun test_zero_amount_deposit() {
+        // Test zero amount deposit failure
         oracles::init_for_test();
         let sig = signer::module_signer<Test>();
         oracles::deposit_to_escrow(&sig, 0);
@@ -533,6 +543,7 @@ module verity::test_oracles {
     #[test]
     #[expected_failure(abort_code = 1008, location = verity::oracles)]
     public fun test_insufficient_balance_withdraw() {
+        // Test insufficient balance withdrawal failure
         oracles::init_for_test();
         let sig = signer::module_signer<Test>();
         let deposit_amount = 100u256;
