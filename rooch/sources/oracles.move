@@ -17,9 +17,12 @@ module verity::oracles {
     use std::vector;
     use rooch_framework::coin::{Self, Coin};
     use rooch_framework::gas_coin::RGas;
+    use rooch_framework::account_coin_store;
     use rooch_framework::coin_store::{Self, CoinStore};
     use std::string::{Self,String};
     use std::option::{Self, Option};
+    use moveos_std::simple_map::{Self, SimpleMap};
+
     #[test_only]
     use rooch_framework::genesis;
     use verity::registry::{Self as OracleSupport};
@@ -32,6 +35,7 @@ module verity::oracles {
     const OnlyOwnerError: u64 = 1004;
     const NotEnoughGasError: u64 = 1005;
     const OracleSupportError: u64 = 1006;
+    const DoubleFulfillmentError: u64= 1007;
 
 
 
@@ -50,6 +54,7 @@ module verity::oracles {
         oracle: address,
         response_status: u16,
         response: Option<String>,
+        account_to_credit: address,
         amount: u256
     }
 
@@ -57,6 +62,7 @@ module verity::oracles {
     struct GlobalParams has key {
         owner: address,
         treasury: Object<CoinStore<RGas>>,
+        balances: SimpleMap<address, u256>,
     }
 
     // -------- Events --------
@@ -81,7 +87,8 @@ module verity::oracles {
 
         account::move_resource_to(&module_signer, GlobalParams {
             owner,
-            treasury: treasury_obj
+            treasury: treasury_obj,
+            balances: simple_map::new(),
         });
     }
 
@@ -137,26 +144,13 @@ module verity::oracles {
         option::none()
     }
 
-    /// Creates a new oracle request for arbitrary API data.
-    /// This function is intended to be called by third-party contracts
-    /// to initiate off-chain data requests.
-    public fun new_request(
+    fun create_request(
         params: HTTPRequest,
         pick: String,
         oracle: address,
         notify: Option<vector<u8>>,
-        payment: Coin<RGas>
-    ): ObjectID {
-
-        let sent_coin =  coin::value(&payment);
-        let option_min_amount = OracleSupport::compute_cost(oracle ,params.url, string::length(&params.body));
-        assert!(option::is_some(&option_min_amount), OracleSupportError);
-        let min_amount= option::destroy_some(option_min_amount);
-
-        assert!(sent_coin >= min_amount, NotEnoughGasError);
-        let global_param = account::borrow_mut_resource<GlobalParams>(@verity);
-        coin_store::deposit(&mut global_param.treasury, payment);
-
+        amount: u256
+    ): ObjectID{
         // Create new request object
         let request = object::new(Request {
             params,
@@ -164,7 +158,8 @@ module verity::oracles {
             oracle,
             response_status: 0, 
             response: option::none(),
-            amount:min_amount
+            account_to_credit: tx_context::sender(),
+            amount,
         });
         let request_id = object::id(&request);
         object::transfer(request, oracle); // transfer to oracle to ensure permission
@@ -180,10 +175,87 @@ module verity::oracles {
             request_id
         });
 
-        request_id
+        return request_id
     }
 
-    // TODO: withdraw command for orchestrator and User
+    /// Creates a new oracle request for arbitrary API data.
+    /// This function is intended to be called by third-party contracts
+    /// to initiate off-chain data requests.
+    public fun new_request_with_payment(
+        params: HTTPRequest,
+        pick: String,
+        oracle: address,
+        notify: Option<vector<u8>>,
+        payment: Coin<RGas>
+    ): ObjectID {
+
+        let sent_coin =  coin::value(&payment);
+        // 1024 could be changed to the max string length allowed on Move
+        let option_min_amount = OracleSupport::estimated_cost(oracle ,params.url, string::length(&params.body), 1024);
+        assert!(option::is_some(&option_min_amount), OracleSupportError);
+        let min_amount= option::destroy_some(option_min_amount);
+
+        assert!(sent_coin >= min_amount, NotEnoughGasError);
+        let global_param = account::borrow_mut_resource<GlobalParams>(@verity);
+        coin_store::deposit(&mut global_param.treasury, payment);
+
+        return create_request(
+            params,
+            pick,
+            oracle,
+            notify,
+            min_amount
+        )
+    }
+
+    public fun new_request(
+        params: HTTPRequest,
+        pick: String,
+        oracle: address,
+        notify: Option<vector<u8>>,
+    ): ObjectID {
+
+        let sender= tx_context::sender();
+        let account_balance =  get_user_balance(sender);
+        // 1024 could be changed to the max string length allowed on Move
+        let option_min_amount = OracleSupport::estimated_cost(oracle ,params.url, string::length(&params.body), 1024);
+        assert!(option::is_some(&option_min_amount), OracleSupportError);
+        let min_amount= option::destroy_some(option_min_amount);
+
+        assert!(account_balance >= min_amount, NotEnoughGasError);
+        let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
+        let balance = simple_map::borrow_mut(&mut global_params.balances, &sender);
+        *balance = *balance-min_amount;
+
+        return create_request(
+            params,
+            pick,
+            oracle,
+            notify,
+            min_amount
+        )
+    }
+
+
+
+    public entry fun deposit_to_escrow(from: &signer, amount:u256){
+        let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
+        let sender = signer::address_of(from);
+        
+
+        let deposit = account_coin_store::withdraw<RGas>(from, amount);
+        coin_store::deposit(&mut global_params.treasury, deposit);
+
+        if (!simple_map::contains_key(&global_params.balances, &sender)) {
+            simple_map::add(&mut global_params.balances, sender, amount);
+        } else{
+            let balance = simple_map::borrow_mut(&mut global_params.balances, &sender);
+            *balance = *balance+amount;
+        };
+
+    }
+
+    // TODO: withdraw command for User
 
     public entry fun fulfil_request(
         caller: &signer,
@@ -199,6 +271,10 @@ module verity::oracles {
         // Verify the signer matches the pending request's signer/oracle
         assert!(request.oracle == caller_address, SignerNotOracleError);
 
+        // Prevent double fulfillment
+        assert!(request.response_status == 0 || option::is_none(&request.response), DoubleFulfillmentError);
+
+
         // // Verify the data and proofsin
         // assert!(verify(result, proof), ProofNotValidError);
 
@@ -206,12 +282,31 @@ module verity::oracles {
         request.response = option::some(result);
         request.response_status = response_status;
 
-        // TODO: Move gas from module escrow to Oracle
+        let option_fulfillment_cost= OracleSupport::estimated_cost(request.oracle ,request.params.url, string::length(&request.params.body), string::length(&result));
+        assert!(option::is_some(&option_fulfillment_cost), OracleSupportError);
+        let fulfillment_cost= option::destroy_some(option_fulfillment_cost);
+
+        // send token to orchestrator wallet
+        let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
+        let payment= coin_store::withdraw(&mut global_params.treasury, fulfillment_cost);
+
+        account_coin_store::deposit(caller_address, payment);
+
+        // add extra to balance if any exists 
+        if (request.amount > fulfillment_cost &&(request.amount - fulfillment_cost)>0){
+            if (!simple_map::contains_key(&global_params.balances, &request.account_to_credit)) {
+                simple_map::add(&mut global_params.balances, request.account_to_credit,  request.amount - fulfillment_cost );
+            } else{
+                let balance = simple_map::borrow_mut(&mut global_params.balances, &request.account_to_credit);
+                *balance = *balance+ request.amount - fulfillment_cost ;
+            };
+        };
 
         // Emit fulfil event
         event::emit(Fulfilment {
             request: *request,
         });
+        
     }
 
 
@@ -277,6 +372,17 @@ module verity::oracles {
         let request = borrow_request(id);
         request.response_status
     }
+
+    #[view]
+    public fun get_user_balance(user: address): u256 {
+        let global_params = account::borrow_resource<GlobalParams>(@verity);
+
+        if (simple_map::contains_key(&global_params.balances, &user)) {
+            *simple_map::borrow(&global_params.balances, &user)
+        } else {
+            0
+        }
+    }
 }
 
 #[test_only]
@@ -309,7 +415,7 @@ module verity::test_oracles {
         // let recipient = @0x46;
         let payment = gas_coin::mint_for_test(1000u256);
 
-        let request_id = oracles::new_request(
+        let request_id = oracles::new_request_with_payment(
             http_request, 
             response_pick, 
             oracle, 

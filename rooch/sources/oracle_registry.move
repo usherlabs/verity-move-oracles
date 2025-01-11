@@ -9,13 +9,14 @@ module verity::registry {
     use moveos_std::simple_map::{Self, SimpleMap};
     use moveos_std::string_utils;
 
-    const NotOracleError: u64 = 1;
+    const NotOracleError: u64 = 2001;
 
     struct SupportedURLMetadata has copy, drop, store {
         url_prefix: String,
         base_fee: u256,
         minimum_payload_length: u64,
-        cost_per_token: u256,
+        cost_per_payload_token: u256,
+        cost_per_respond_token: u256,
     }
 
     struct GlobalParams has key {
@@ -40,7 +41,7 @@ module verity::registry {
         url: String,
         base_fee: u256,
         minimum_payload_length: u64,
-        cost_per_token: u256
+        cost_per_payload_token: u256
     }
 
     struct URLSupportRemoved has copy, drop {
@@ -51,10 +52,11 @@ module verity::registry {
 
 
     /// Compute the cost for an orchestrator request based on payload length
-    public fun compute_cost(
+    public fun estimated_cost(
         orchestrator: address,
         url: String,
-        payload_length: u64
+        payload_length: u64,
+        respond_length: u64
     ): Option<u256> {
         let supported_urls = &account::borrow_resource<GlobalParams>(@verity).supported_urls;
 
@@ -72,8 +74,8 @@ module verity::registry {
                     if(orchestrator_url.minimum_payload_length > payload_length){
                         return option::none()
                     };
-                    let chargeable_token: u256 = ((payload_length as u256)-(orchestrator_url.minimum_payload_length as u256) );
-                    return option::some(orchestrator_url.base_fee + (chargeable_token * orchestrator_url.cost_per_token))
+                    let chargeable_token: u256 = ((payload_length as u256)-(orchestrator_url.minimum_payload_length as u256));
+                    return option::some(orchestrator_url.base_fee + (chargeable_token * orchestrator_url.cost_per_payload_token) + (orchestrator_url.cost_per_respond_token*(respond_length as u256)))
                 };
                 i = i + 1;
             }
@@ -87,7 +89,8 @@ module verity::registry {
         url_prefix: String,
         base_fee: u256,
         minimum_payload_length: u64,
-        cost_per_token: u256
+        cost_per_payload_token: u256,
+        cost_per_respond_token: u256
     ) {
         let sender = signer::address_of(caller);
         let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
@@ -102,7 +105,8 @@ module verity::registry {
             url_prefix,
             base_fee,
             minimum_payload_length,
-            cost_per_token
+            cost_per_payload_token,
+            cost_per_respond_token
         };
 
         // Check if URL prefix already exists
@@ -131,7 +135,7 @@ module verity::registry {
             url: url_prefix,
             base_fee,
             minimum_payload_length,
-            cost_per_token
+            cost_per_payload_token
         });
     }
 
@@ -192,14 +196,14 @@ module verity::test_registry {
         
         // Test adding new URL support
         let url = string::utf8(b"https://api.example.com");
-        registry::add_supported_url(&test, url, 100, 0, 1);
+        registry::add_supported_url(&test, url, 100, 0, 1,0);
         
         let urls = registry::get_supported_urls(signer::address_of(&test));
         assert!(vector::length(&urls) == 1, 0);
         
-        let cost = registry::compute_cost(signer::address_of(&test), url, 500);
+        let cost = registry::estimated_cost(signer::address_of(&test), url, 500, 0);
         assert!(option::is_some(&cost), 0);
-        assert!(option::extract(&mut cost) == 600, 0); // base_fee + (min_length - payload_length) * cost_per_token
+        assert!(option::extract(&mut cost) == 600, 0); // base_fee + (min_length - payload_length) * cost_per_payload_token
     }
 
     #[test]
@@ -210,14 +214,14 @@ module verity::test_registry {
         
         // Test cost computation
         let url = string::utf8(b"https://api.example.com");
-        registry::add_supported_url(&test, url, 100, 0, 1);
+        registry::add_supported_url(&test, url, 100, 0, 1,0);
         
         let urls = registry::get_supported_urls(signer::address_of(&test));
         assert!(vector::length(&urls) == 1, 0);
         
-        let cost = registry::compute_cost(signer::address_of(&test), url, 500);
+        let cost = registry::estimated_cost(signer::address_of(&test), url, 500, 0);
         assert!(option::is_some(&cost), 0);
-        assert!(option::extract(&mut cost) == 600, 0); // base_fee + (min_length - payload_length) * cost_per_token
+        assert!(option::extract(&mut cost) == 600, 0); // base_fee + (min_length - payload_length) * cost_per_payload_token
     }
 
     #[test]
@@ -227,7 +231,7 @@ module verity::test_registry {
         
         // Test removing URL support
         let url = string::utf8(b"https://api.example.com");
-        registry::add_supported_url(&test, url, 100, 0, 1);
+        registry::add_supported_url(&test, url, 100, 0, 1,0);
         
         registry::remove_supported_url(&test, url);
         let urls = registry::get_supported_urls(signer::address_of(&test));
@@ -241,11 +245,11 @@ module verity::test_registry {
         
         // Test cost computation
         let url = string::utf8(b"https://api.example.com");
-        registry::add_supported_url(&test, url, 100, 0, 1);
+        registry::add_supported_url(&test, url, 100, 0, 1,0);
         
-        let cost = registry::compute_cost(signer::address_of(&test), url, 500);
+        let cost = registry::estimated_cost(signer::address_of(&test), url, 500, 0);
         assert!(option::is_some(&cost), 0);
-        assert!(option::extract(&mut cost) == 600, 0); // base_fee + (min_length - payload_length) * cost_per_token
+        assert!(option::extract(&mut cost) == 600, 0); // base_fee + (min_length - payload_length) * cost_per_payload_token
     }
 
     #[test]
@@ -255,7 +259,7 @@ module verity::test_registry {
         
         // Test cost computation for non-existent URL
         let url = string::utf8(b"https://nonexistent.com");
-        let cost = registry::compute_cost(signer::address_of(&test), url, 500);
+        let cost = registry::estimated_cost(signer::address_of(&test), url, 500, 0);
         assert!(option::is_none(&cost), 0);
     }
 }

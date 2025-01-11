@@ -60,7 +60,7 @@ module verity_test_foreign_module::example_caller {
         // We're passing the address and function identifier of the recipient address. in this from <module_name>::<function_name>
         // If you do not want to pay for the Oracle to notify your contract, you can pass in option::none() as the argument.
         let payment = account_coin_store::withdraw<RGas>(from, amount);
-        let request_id = Oracles::new_request(http_request, pick, oracle, Oracles::with_notify(@verity_test_foreign_module, b"example_caller::receive_data"),payment);
+        let request_id = Oracles::new_request_with_payment(http_request, pick, oracle, Oracles::with_notify(@verity_test_foreign_module, b"example_caller::receive_data"),payment);
         // let no_notify_request_id = Oracles::new_request(http_request, pick, oracle, Oracles::without_notify());
         let params = account::borrow_mut_resource<GlobalParams>(@verity_test_foreign_module);
         vector::push_back(&mut params.pending_requests, request_id);
@@ -145,7 +145,7 @@ module verity_test_foreign_module::test_foreign_module {
         let pick = std::string::utf8(b"$.data");
         let amount = 100000u256;
 
-        registry::add_supported_url(&test_orchestrator, url, 100, 0, 1);
+        registry::add_supported_url(&test_orchestrator, url, 100, 0, 1, 0);
         
 
         // Fund the test account
@@ -167,7 +167,7 @@ module verity_test_foreign_module::test_foreign_module {
     //     receive_data();
         
     //     let params = account::borrow_resource<GlobalParams>(@verity_test_foreign_module);
-    //     assert!(vector::length(&params.pending_requests) == 0, 1);
+    //     assert!(vector::length(&params.pending_requests) == 0, 1, 0);
     // }
 
     #[test]
@@ -189,7 +189,7 @@ module verity_test_foreign_module::test_foreign_module {
         let pick = std::string::utf8(b"$.data");
         let amount = 100u256;
 
-        registry::add_supported_url(&test_orchestrator, std::string::utf8(b"https://api.test.com/2/"), 100, 0, 1);
+        registry::add_supported_url(&test_orchestrator, std::string::utf8(b"https://api.test.com/2/"), 100, 0, 1, 0);
 
 
         // Fund the test account with enough for multiple requests
@@ -247,7 +247,7 @@ module verity_test_foreign_module::test_foreign_module {
         gas_coin::faucet_entry(&test_signer, amount);
 
 
-        registry::add_supported_url(&test_orchestrator, std::string::utf8(b"https://api.test.com/"), 100, 0, 1);
+        registry::add_supported_url(&test_orchestrator, std::string::utf8(b"https://api.test.com/"), 100, 0, 1, 0);
         request_data(&test_signer, url, method, headers, body, pick, oracle, amount);
 
         assert!(pending_requests_count() == 1, 4);
