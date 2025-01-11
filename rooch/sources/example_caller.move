@@ -159,16 +159,6 @@ module verity_test_foreign_module::test_foreign_module {
         assert!(pending_requests_count() == 1, 0);
     }
 
-    // #[test]
-    // fun test_receive_data_empty() {
-    //     setup_test();
-        
-    //     // Test receive_data with no pending requests
-    //     receive_data();
-        
-    //     let params = account::borrow_resource<GlobalParams>(@verity_test_foreign_module);
-    //     assert!(vector::length(&params.pending_requests) == 0, 1, 0);
-    // }
 
     #[test]
     fun test_multiple_requests() {
