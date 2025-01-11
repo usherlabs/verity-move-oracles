@@ -1,4 +1,4 @@
-module orchestrator_registry::registry {
+module verity::registry {
 
     use std::option::{Self, Option};
     use moveos_std::signer;
@@ -56,7 +56,7 @@ module orchestrator_registry::registry {
         url: String,
         payload_length: u64
     ): Option<u256> {
-        let supported_urls = &account::borrow_resource<GlobalParams>(@orchestrator_registry).supported_urls;
+        let supported_urls = &account::borrow_resource<GlobalParams>(@verity).supported_urls;
 
         let url = string_utils::to_lower_case(&url);
         if (simple_map::contains_key(supported_urls, &orchestrator)) {
@@ -90,7 +90,7 @@ module orchestrator_registry::registry {
         cost_per_token: u256
     ) {
         let sender = signer::address_of(caller);
-        let global_params = account::borrow_mut_resource<GlobalParams>(@orchestrator_registry);
+        let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
         
         // Initialize orchestrator's URL vector if it doesn't exist
         if (!simple_map::contains_key(&global_params.supported_urls, &sender)) {
@@ -140,7 +140,7 @@ module orchestrator_registry::registry {
         caller: &signer,
         url_prefix: String) {
         let sender = signer::address_of(caller);
-        let global_params = account::borrow_mut_resource<GlobalParams>(@orchestrator_registry);
+        let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
         
         assert!(simple_map::contains_key(&global_params.supported_urls, &sender), NotOracleError);
         let orchestrator_urls = simple_map::borrow_mut(&mut global_params.supported_urls, &sender);
@@ -165,7 +165,7 @@ module orchestrator_registry::registry {
     #[view]
     /// Get all supported URLs and their metadata for an orchestrator
     public fun get_supported_urls(orchestrator: address): vector<SupportedURLMetadata> {
-        let global_params = account::borrow_resource<GlobalParams>(@orchestrator_registry);
+        let global_params = account::borrow_resource<GlobalParams>(@verity);
         
         if (simple_map::contains_key(&global_params.supported_urls, &orchestrator)) {
             *simple_map::borrow(&global_params.supported_urls, &orchestrator)
@@ -176,12 +176,12 @@ module orchestrator_registry::registry {
 }
 
 #[test_only]
-module orchestrator_registry::test_registry {
+module verity::test_registry {
     use std::string;
     use moveos_std::signer;
     use std::option;
     use std::vector;
-    use orchestrator_registry::registry;
+    use verity::registry;
     struct Test has key {
     }
 

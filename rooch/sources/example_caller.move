@@ -113,7 +113,7 @@ module verity_test_foreign_module::test_foreign_module {
     use moveos_std::signer;
     use verity_test_foreign_module::example_caller::{Self, request_data, pending_requests_count};
     use rooch_framework::gas_coin;
-    use orchestrator_registry::registry;
+    use verity::registry;
     use std::vector;
 
 

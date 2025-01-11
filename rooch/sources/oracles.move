@@ -22,7 +22,7 @@ module verity::oracles {
     use std::option::{Self, Option};
     #[test_only]
     use rooch_framework::genesis;
-    use orchestrator_registry::registry::{Self as OracleSupport};
+    use verity::registry::{Self as OracleSupport};
 
 
     const MIN_GAS_REQUIRED: u64 = 1000000000000000000;
