@@ -45,6 +45,9 @@ export abstract class BasicBearerAPIHandler {
         if (!this.isApprovedPath(url_object)) {
           return { status: 406, message: `${url_object} is supposed by this orchestrator` };
         }
+        if (this.validatePayload(url_object.pathname, data.params.body)) {
+          return { status: 406, message: `Invalid Payload` };
+        }
       } catch (err) {
         return { status: 406, message: `Invalid Domain Name` };
       }
