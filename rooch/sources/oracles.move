@@ -36,7 +36,9 @@ module verity::oracles {
     const NotEnoughGasError: u64 = 1005;
     const OracleSupportError: u64 = 1006;
     const DoubleFulfillmentError: u64= 1007;
-
+    const InsufficientBalanceError: u64 = 1008;
+    const NoBalanceError: u64 = 1009;
+    const ZeroAmountError: u64 = 1010;
 
 
     // Struct to represent HTTP request parameters
@@ -76,6 +78,11 @@ module verity::oracles {
 
     struct Fulfilment has copy, drop {
         request: Request,
+    }
+
+    struct WithdrawEvent has copy, drop {
+        user: address,
+        amount: u256,
     }
     // ------------------------
 
@@ -216,7 +223,7 @@ module verity::oracles {
     ): ObjectID {
 
         let sender= tx_context::sender();
-        let account_balance =  get_user_balance(sender);
+        let account_balance = get_user_balance(sender);
         // 1024 could be changed to the max string length allowed on Move
         let option_min_amount = OracleSupport::estimated_cost(oracle ,params.url, string::length(&params.body), 1024);
         assert!(option::is_some(&option_min_amount), OracleSupportError);
@@ -239,10 +246,12 @@ module verity::oracles {
 
 
     public entry fun deposit_to_escrow(from: &signer, amount:u256){
+        // Check that amount is not zero
+        assert!(amount > 0, ZeroAmountError);
+        
         let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
         let sender = signer::address_of(from);
         
-
         let deposit = account_coin_store::withdraw<RGas>(from, amount);
         coin_store::deposit(&mut global_params.treasury, deposit);
 
@@ -252,10 +261,40 @@ module verity::oracles {
             let balance = simple_map::borrow_mut(&mut global_params.balances, &sender);
             *balance = *balance+amount;
         };
-
     }
 
-    // TODO: withdraw command for User
+    public entry fun withdraw_from_escrow(from: &signer, amount: u256) {
+        // Check that amount is not zero
+        assert!(amount > 0, ZeroAmountError);
+        
+        let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
+        let sender = signer::address_of(from);
+        
+        // Check if user has a balance
+        assert!(simple_map::contains_key(&global_params.balances, &sender), NoBalanceError);
+        
+        let balance = simple_map::borrow_mut(&mut global_params.balances, &sender);
+        // Check if user has enough balance
+        assert!(*balance >= amount, InsufficientBalanceError);
+        
+        // Update balance
+        *balance = *balance - amount;
+        
+        // If balance becomes zero, remove the entry
+        if (*balance == 0) {
+            simple_map::remove(&mut global_params.balances, &sender);
+        };
+        
+        // Withdraw from treasury and deposit to user
+        let withdrawal = coin_store::withdraw(&mut global_params.treasury, amount);
+        account_coin_store::deposit(sender, withdrawal);
+        
+        // Emit withdraw event
+        event::emit(WithdrawEvent {
+            user: sender,
+            amount,
+        });
+    }
 
     public entry fun fulfil_request(
         caller: &signer,
@@ -436,7 +475,6 @@ module verity::test_oracles {
         oracles::fulfil_request(&sig, id, 200, result);
     }
 
-
     #[test]
     #[expected_failure(abort_code = 1006, location = verity::oracles)]
     public fun test_view_functions(){
@@ -459,5 +497,49 @@ module verity::test_oracles {
 
         // assert!(oracles::get_response(&id) == option::some(string::utf8(b"Hello World")), 99958);
         assert!(oracles::get_response_status(&id) == (200 as u16), 99959);
+    }
+
+    #[test]
+    public fun test_deposit_and_withdraw() {
+        // Initialize test environment
+        oracles::init_for_test();
+        let sig = signer::module_signer<Test>();
+        let user = signer::address_of(&sig);
+
+        // Test deposit
+        let deposit_amount = 1000u256;
+        gas_coin::faucet_entry(&sig, deposit_amount);
+        oracles::deposit_to_escrow(&sig, deposit_amount);
+
+        // Verify balance after deposit
+        assert!(oracles::get_user_balance(user) == deposit_amount, 99960);
+
+        // Test withdraw
+        let withdraw_amount = 500u256;
+        oracles::withdraw_from_escrow(&sig, withdraw_amount);
+
+        // Verify balance after withdrawal
+        assert!(oracles::get_user_balance(user) == deposit_amount - withdraw_amount, 99961);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 1010, location = verity::oracles)]
+    public fun test_zero_amount_deposit() {
+        oracles::init_for_test();
+        let sig = signer::module_signer<Test>();
+        oracles::deposit_to_escrow(&sig, 0);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 1008, location = verity::oracles)]
+    public fun test_insufficient_balance_withdraw() {
+        oracles::init_for_test();
+        let sig = signer::module_signer<Test>();
+        let deposit_amount = 100u256;
+        gas_coin::faucet_entry(&sig, deposit_amount);
+        
+        oracles::deposit_to_escrow(&sig, deposit_amount);
+        // Try to withdraw more than deposited
+        oracles::withdraw_from_escrow(&sig, 200u256);
     }
 }
