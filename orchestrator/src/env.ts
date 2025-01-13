@@ -24,6 +24,7 @@ const baseConfig = {
   batchSize: process.env.BATCH_SIZE ?? 1000,
   // Integrations
   xBearerToken: process.env.X_BEARER_TOKEN ?? "",
+  openAIToken: process.env.OPEN_AI_TOKEN ?? "",
 };
 
 interface IEnvVars {
@@ -41,6 +42,7 @@ interface IEnvVars {
   ecdsaPrivateKey?: string;
   batchSize: number;
   xBearerToken: string;
+  openAIToken: string;
 }
 
 const envVarsSchema = Joi.object({
@@ -90,6 +92,7 @@ const envVarsSchema = Joi.object({
 
   // Integrations
   xBearerToken: Joi.string().allow("").required(),
+  openAIToken: Joi.string().allow("").required(),
 
   // Common
   sentryDSN: Joi.string().allow("", null),
@@ -113,6 +116,7 @@ export default {
   sentryDSN: envVars.sentryDSN,
   integrations: {
     xBearerToken: envVars.xBearerToken,
+    openAIToken: envVars.openAIToken,
   },
   rooch: {
     chainId: envVars.roochChainId,

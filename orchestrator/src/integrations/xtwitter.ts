@@ -1,20 +1,15 @@
 import env from "@/env";
+import { BasicBearerAPIHandler } from "./base";
 
-class XfkaTwitter {
-  private SERVER_DOMAIN = "api.twitter.com";
-
-  constructor(private accessToken: string) {}
-
-  get hosts() {
-    return ["x.com", "api.x.com", "twitter.com", "api.twitter.com"];
-  }
-
-  get getRequestRate() {
-    return 60 * 1000; //
-  }
-  getAccessToken(): string | null {
-    return this.accessToken;
+export default class TwitterIntegration extends BasicBearerAPIHandler {
+  validatePayload(path: string): boolean {
+    return true;
   }
 }
 
-export const instance = new XfkaTwitter(env.integrations.xBearerToken);
+export const instance = new TwitterIntegration(
+  env.integrations.openAIToken,
+  ["api.x.com", "api.twitter.com"],
+  ["/2/tweets"],
+  60 * 1000,
+);

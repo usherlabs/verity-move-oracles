@@ -11,10 +11,21 @@ module verity_test_foreign_module::example_caller {
     use std::vector;
     use std::string::String;
     use verity::oracles::{Self as Oracles};
+    use rooch_framework::gas_coin::RGas;
+    use rooch_framework::account_coin_store;
+    #[test_only]
+    use verity::oracles;
 
     struct GlobalParams has key {
-      pending_requests: vector<ObjectID>,
+       pending_requests: vector<ObjectID>,
     }
+
+    #[test_only]
+    public fun init_for_test(){
+        oracles::init_for_test();
+        init();
+    }
+
 
     // ? ------ OPTIONAL ------
     // ? This is totally OPTIONAL
@@ -35,18 +46,21 @@ module verity_test_foreign_module::example_caller {
     }
 
     public entry fun request_data(
+        from: &signer,
         url: String,
         method: String,
         headers: String,
         body: String,
         pick: String,
-        oracle: address
+        oracle: address,
+        amount: u256
     ) {
         let http_request = Oracles::build_request(url, method, headers, body);
 
         // We're passing the address and function identifier of the recipient address. in this from <module_name>::<function_name>
         // If you do not want to pay for the Oracle to notify your contract, you can pass in option::none() as the argument.
-        let request_id = Oracles::new_request(http_request, pick, oracle, Oracles::with_notify(@verity_test_foreign_module, b"example_caller::receive_data"));
+        let payment = account_coin_store::withdraw<RGas>(from, amount);
+        let request_id = Oracles::new_request_with_payment(http_request, pick, oracle, Oracles::with_notify(@verity_test_foreign_module, b"example_caller::receive_data"),payment);
         // let no_notify_request_id = Oracles::new_request(http_request, pick, oracle, Oracles::without_notify());
         let params = account::borrow_mut_resource<GlobalParams>(@verity_test_foreign_module);
         vector::push_back(&mut params.pending_requests, request_id);
@@ -85,5 +99,148 @@ module verity_test_foreign_module::example_caller {
 
             i = i + 1;
         };
+    }
+
+    #[view]
+    public fun pending_requests_count(): u64 {
+        let params = account::borrow_resource<GlobalParams>(@verity_test_foreign_module);
+        vector::length(&params.pending_requests)
+    }
+}
+
+#[test_only]
+module verity_test_foreign_module::test_foreign_module {
+    use moveos_std::signer;
+    use verity_test_foreign_module::example_caller::{Self, request_data, pending_requests_count};
+    use rooch_framework::gas_coin;
+    use verity::registry;
+    use std::vector;
+
+
+
+    #[test_only]
+    struct Test has key {}
+
+    #[test_only]
+    struct TestOrchestrator has key {}
+
+    #[test_only]
+    fun setup_test() {
+        example_caller::init_for_test();
+    }
+
+    #[test]
+    fun test_request_data_basic() {
+        setup_test();
+        let test_signer = moveos_std::signer::module_signer<Test>();
+        let test_orchestrator = moveos_std::signer::module_signer<TestOrchestrator>();
+
+
+        
+        // Setup test parameters
+        let url = std::string::utf8(b"https://api.test.com");
+        let method = std::string::utf8(b"GET");
+        let headers = std::string::utf8(b"Content-Type: application/json");
+        let body = std::string::utf8(b"");
+        let pick = std::string::utf8(b"$.data");
+        let amount = 100000u256;
+
+        registry::add_supported_url(&test_orchestrator, url, 100, 0, 1, 0);
+        
+
+        // Fund the test account
+        gas_coin::faucet_entry(&test_signer, amount);
+
+        // Make request
+        request_data(&test_signer, url, method, headers, body, pick, signer::address_of(&test_orchestrator), amount);
+
+        // Verify request was stored
+        
+        assert!(pending_requests_count() == 1, 0);
+    }
+
+
+    #[test]
+    fun test_multiple_requests() {
+        setup_test();
+        let test_signer = moveos_std::signer::module_signer<Test>();
+        let test_orchestrator = moveos_std::signer::module_signer<TestOrchestrator>();
+
+
+        // Setup test parameters for multiple requests
+        let urls = vector[
+            std::string::utf8(b"https://api.test.com/2/test/id2"),
+            std::string::utf8(b"https://api.test.com/2/my_profile"),
+            std::string::utf8(b"https://api.test.com/2/test")
+        ];
+        let method = std::string::utf8(b"GET");
+        let headers = std::string::utf8(b"Content-Type: application/json");
+        let body = std::string::utf8(b"");
+        let pick = std::string::utf8(b"$.data");
+        let amount = 100u256;
+
+        registry::add_supported_url(&test_orchestrator, std::string::utf8(b"https://api.test.com/2/"), 100, 0, 1, 0);
+
+
+        // Fund the test account with enough for multiple requests
+        let total_amount = amount * 4;
+        gas_coin::faucet_entry(&test_signer, total_amount);
+
+        // Make multiple requests
+        let i = 0;
+        while (i < vector::length(&urls)) {
+            let url = *vector::borrow(&urls, i);
+            request_data(&test_signer, url, method, headers, body, pick, signer::address_of(&test_orchestrator), amount);
+            i = i + 1;
+        };
+
+        // Verify all requests were stored
+        assert!(pending_requests_count() == 3, 2);
+
+    }
+
+    #[test]
+    #[expected_failure(abort_code = rooch_framework::coin_store::ErrorInsufficientBalance, location = rooch_framework::coin_store)] // Adjust abort code as needed
+    fun test_insufficient_funds() {
+        setup_test();
+        let test_signer = moveos_std::signer::module_signer<Test>();
+        
+        let url = std::string::utf8(b"https://api.test.com");
+        let method = std::string::utf8(b"GET");
+        let headers = std::string::utf8(b"Content-Type: application/json");
+        let body = std::string::utf8(b"");
+        let pick = std::string::utf8(b"$.data");
+        let oracle = @0x1;
+        let amount = 100u256;
+
+
+
+        gas_coin::faucet_entry(&test_signer, amount/10);
+        request_data(&test_signer, url, method, headers, body, pick, oracle, amount);
+    }
+
+    #[test]
+    fun test_request_with_body() {
+        setup_test();
+        let test_signer = moveos_std::signer::module_signer<Test>();
+        let test_orchestrator = moveos_std::signer::module_signer<TestOrchestrator>();
+        
+        let url = std::string::utf8(b"https://api.test.com/yud");
+        let method = std::string::utf8(b"POST");
+        let headers = std::string::utf8(b"Content-Type: application/json");
+        let body = std::string::utf8(b"{\"key\":\"value\"}");
+        let pick = std::string::utf8(b".data");
+        let oracle = signer::address_of(&test_orchestrator);
+        let amount = 1000u256;
+
+
+        gas_coin::faucet_entry(&test_signer, amount);
+
+
+        registry::add_supported_url(&test_orchestrator, std::string::utf8(b"https://api.test.com/"), 100, 0, 1, 0);
+        request_data(&test_signer, url, method, headers, body, pick, oracle, amount);
+
+        assert!(pending_requests_count() == 1, 4);
+        
     }
 }
