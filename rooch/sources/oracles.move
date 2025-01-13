@@ -54,6 +54,7 @@ module verity::oracles {
         oracle: address,
         response_status: u16,
         response: Option<String>,
+        // This is an account to be paid back by the Contract in case of excess payment.
         account_to_credit: address,
         amount: u256
     }
@@ -62,6 +63,8 @@ module verity::oracles {
     struct GlobalParams has key {
         owner: address,
         treasury: Object<CoinStore<RGas>>,
+        // Holds the address of each requesting Contract and their balance
+        // Either a calling Contract, or a User adjust the balance.
         balances: SimpleMap<address, u256>,
     }
 
@@ -196,6 +199,7 @@ module verity::oracles {
     ): ObjectID {
         let sent_coin = coin::value(&payment);
         // 1024 could be changed to the max string length allowed on Move
+        // This 1024 is a default estaimate for the expected payload length, however, it's the user's responsibility to cover in case of requests that expect large payload responses.
         let option_min_amount = OracleSupport::estimated_cost(oracle, params.url, string::length(&params.body), 1024);
         assert!(option::is_some(&option_min_amount), OracleSupportError);
         let min_amount = option::destroy_some(option_min_amount);

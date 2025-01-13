@@ -77,6 +77,7 @@ module verity::registry {
         let supported_urls = &account::borrow_resource<GlobalParams>(@verity).supported_urls;
 
         let url = string_utils::to_lower_case(&url);
+        // Is the Orchestrator registered as an Oracle?
         if (simple_map::contains_key(supported_urls, &orchestrator)) {
             let orchestrator_urls = simple_map::borrow(supported_urls, &orchestrator);
 
@@ -89,6 +90,7 @@ module verity::registry {
                     if (orchestrator_url.minimum_payload_length > payload_length) {
                         return option::none()
                     };
+                    // The minimum_payload_length covers for metadata associated request payload.
                     let chargeable_token: u256 = ((payload_length as u256) - (orchestrator_url.minimum_payload_length as u256));
                     return option::some(
                         orchestrator_url.base_fee + 
