@@ -5,6 +5,8 @@ import axios, { type AxiosResponse } from "axios";
 import { run as jqRun } from "node-jq";
 
 export abstract class BasicBearerAPIHandler {
+  protected last_executed = 0;
+
   constructor(
     protected accessToken: string,
     protected supported_host: string[],
@@ -39,6 +41,16 @@ export abstract class BasicBearerAPIHandler {
 
   async submitRequest(data: ProcessedRequestAdded<any>): Promise<{ status: number; message: string }> {
     try {
+      const currentTime = Date.now();
+      const timeSinceLastExecution = currentTime - this.last_executed;
+
+      if (timeSinceLastExecution < this.getRequestRate) {
+        const waitTime = this.getRequestRate - timeSinceLastExecution;
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+      }
+
+      this.last_executed = Date.now();
+
       const url = data.params.url?.includes("http") ? data.params.url : `https://${data.params.url}`;
       try {
         const url_object = new URL(url);
