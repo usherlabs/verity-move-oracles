@@ -11,7 +11,7 @@ const chatSchema = Joi.object({
     }).required(),
   ),
 });
-export default class TwitterIntegration extends BasicBearerAPIHandler {
+export default class OpenAIIntegration extends BasicBearerAPIHandler {
   validatePayload(path: string, payload: string): boolean {
     try {
       if (this.supported_paths.includes(path)) {
@@ -33,7 +33,7 @@ export default class TwitterIntegration extends BasicBearerAPIHandler {
   }
 }
 
-export const instance = new TwitterIntegration(
+export const instance = new OpenAIIntegration(
   env.integrations.xBearerToken,
   ["api.openai.com"],
   ["/v1/chat/completions"],
