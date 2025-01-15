@@ -20,7 +20,7 @@ const baseConfig = {
   aptosNoditKey: process.env.APTOS_NODIT_KEY,
   // Common
   sentryDSN: process.env.SENTRY_DSN ?? "",
-  ecdsaPrivateKey: process.env.SENTRY_DSN ?? "",
+  ecdsaPrivateKey: process.env.ECDSA_PRIVATE_KEY ?? "",
   batchSize: process.env.BATCH_SIZE ?? 1000,
   // Integrations
   xBearerToken: process.env.X_BEARER_TOKEN ?? "",

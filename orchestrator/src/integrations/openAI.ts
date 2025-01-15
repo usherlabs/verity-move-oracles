@@ -34,7 +34,7 @@ export default class OpenAIIntegration extends BasicBearerAPIHandler {
 }
 
 export const instance = new OpenAIIntegration(
-  env.integrations.xBearerToken,
+  env.integrations.openAIToken,
   ["api.openai.com"],
   ["/v1/chat/completions"],
   60 * 1000,

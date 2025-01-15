@@ -106,7 +106,7 @@ module verity::registry {
 
     /// Add support for a new URL endpoint with specified pricing parameters
     /// If URL already exists, updates the existing metadata
-    public fun add_supported_url(
+    public entry fun  add_supported_url(
         caller: &signer,
         url_prefix: String,
         base_fee: u256,
@@ -163,7 +163,7 @@ module verity::registry {
 
     /// Remove support for a URL endpoint
     /// Aborts if URL is not found or caller is not the oracle
-    public fun remove_supported_url(
+    public  entry fun remove_supported_url(
         caller: &signer,
         url_prefix: String
     ) {

@@ -66,11 +66,11 @@ export abstract class BasicBearerAPIHandler {
 
       const token = this.getAccessToken();
       let request: AxiosResponse<any, any>;
-      if (isValidJson(data.params.headers)) {
+      if (isValidJson(data.params.headers) && isValidJson(data.params.body)) {
         // TODO: Replace direct requests via axios with requests via VerityClient TS module
         request = await axios({
           method: data.params.method,
-          data: data.params.body,
+          data: JSON.parse(data.params.body),
           url: url,
           headers: {
             ...JSON.parse(data.params.headers),
@@ -91,6 +91,7 @@ export abstract class BasicBearerAPIHandler {
 
       try {
         const result = (await jqRun(data.pick, JSON.stringify(request.data), { input: "string" })) as string;
+        log.info({ status: request.status, message: result });
         return { status: request.status, message: result };
       } catch {
         return { status: 409, message: "`Pick` value provided could not be resolved on the returned response" };
