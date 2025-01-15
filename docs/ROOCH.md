@@ -138,7 +138,7 @@ rooch move run --function  <contractAddress>::example_caller::request_data --sen
 Here's an example of requesting the Twitter Followers Count on a Local Rooch Node:
 
 ```bash
-rooch move run --function 0x0d6144b074dd19a9ff581abd5bf7815a39222c8b3ac68ce5938c9d9723544e08::example_caller::request_data --sender-account default --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d'
+rooch move run --function 0x0d6144b074dd19a9ff581abd5bf7815a39222c8b3ac68ce5938c9d9723544e08::example_caller::request_data --sender-account default --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' --args 'u256:50000000'
 ```
 or 
 ```bash
@@ -158,6 +158,21 @@ rooch state -a /object/0x7a01ddf194f8a1c19212d56f747294352bf2e5cf23e6e10e64937aa
 
 #### Step 10: Manage Escrow balance
 
+- To view balance 
+
+```bash
+rooch move view --function 0x0d6144b074dd19a9ff581abd5bf7815a39222c8b3ac68ce5938c9d9723544e08::oracles::get_user_balance  --args 'address:<your_address>' 
+```
+
+- To withdraw Balance
+```bash
+rooch move run --function 0x0d6144b074dd19a9ff581abd5bf7815a39222c8b3ac68ce5938c9d9723544e08::oracles::withdraw_from_escrow  --args 'u256:<amount>' 
+```
+
+- To Deposit 
+```bash
+rooch move run --function 0x0d6144b074dd19a9ff581abd5bf7815a39222c8b3ac68ce5938c9d9723544e08::oracles::deposit_to_escrow  --args 'u256:<amount>' 
+```
 
 To confirm the `Request` Object State, use the Object ID generated from the initial transaction to query the state of the response object.
 This allows you to verify that the request was processed successfully and that the response object is correctly stored in the Rooch Network state.

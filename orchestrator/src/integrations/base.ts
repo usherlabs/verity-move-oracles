@@ -52,12 +52,13 @@ export abstract class BasicBearerAPIHandler {
       this.last_executed = Date.now();
 
       const url = data.params.url?.includes("http") ? data.params.url : `https://${data.params.url}`;
+
       try {
         const url_object = new URL(url);
         if (!this.isApprovedPath(url_object)) {
           return { status: 406, message: `${url_object} is supposed by this orchestrator` };
         }
-        if (this.validatePayload(url_object.pathname, data.params.body)) {
+        if (!this.validatePayload(url_object.pathname, data.params.body)) {
           return { status: 406, message: `Invalid Payload` };
         }
       } catch (err) {

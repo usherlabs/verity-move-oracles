@@ -6,7 +6,7 @@ const chatSchema = Joi.object({
   model: Joi.string().required(),
   messages: Joi.array().items(
     Joi.object({
-      role: Joi.string().valid("developer", "user").required(),
+      role: Joi.string().required(),
       content: Joi.string().required(),
     }).required(),
   ),
@@ -16,11 +16,14 @@ export default class OpenAIIntegration extends BasicBearerAPIHandler {
     try {
       if (this.supported_paths.includes(path)) {
         if (path === "/v1/chat/completions") {
-          const { error, value } = chatSchema.validate(JSON.parse(payload));
+          const { error, value } = chatSchema.validate(JSON.parse(payload), {
+            allowUnknown: true,
+          });
+          console.log({ value, error });
           if (error) {
             return false;
           } else {
-            if (value.model === "gpt-4o") {
+            if (value.model === "gpt-4o" || value.model === "gpt-4o-mini") {
               return true;
             }
           }

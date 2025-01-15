@@ -118,6 +118,8 @@ export abstract class Indexer {
         const event = newRequestsEvents[i];
         const data = await this.processRequestAddedEvent(event);
 
+        log.info({ data });
+
         if (data) {
           try {
             await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
