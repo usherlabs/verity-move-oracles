@@ -23,7 +23,7 @@ export default class OpenAIIntegration extends BasicBearerAPIHandler {
           if (error) {
             return false;
           } else {
-            if (value.model === "gpt-4o" || value.model === "gpt-4o-mini") {
+            if (value.model === "gpt-4o") {
               return true;
             }
           }
