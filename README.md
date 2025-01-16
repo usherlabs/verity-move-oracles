@@ -142,3 +142,42 @@ yarn dev
 # or
 pnpm dev
 ```
+
+
+## Supported APIs on Testnet and Mainnet for Rooch Network
+
+### Twitter/X API
+- User Endpoint: `https://api.x.com/2/users/` and `https://api.x.com/2/tweets/`
+  ```bash
+  # Example: Get user followers count
+  rooch move run --function 0x0d6144b074dd19a9ff581abd5bf7815a39222c8b3ac68ce5938c9d9723544e08::example_caller::request_data \
+    --sender-account default \
+    --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' \
+    --args 'string:GET' \
+    --args 'string:{}' \
+    --args 'string:{}' \
+    --args 'string:.data.public_metrics.followers_count' \
+    --args 'address:<orchestrator_address>' \
+    --args 'u256:50000000'
+  ```
+
+### OpenAI API
+- Chat Completions: `https://api.openai.com/v1/chat/completions`
+  ```bash
+  # Example: Simple GPT request
+  rooch move run --function 0x0d6144b074dd19a9ff581abd5bf7815a39222c8b3ac68ce5938c9d9723544e08::example_caller::request_data \
+    --sender-account default \
+    --args 'string:https://api.openai.com/v1/chat/completions' \
+    --args 'string:POST' \
+    --args 'string:{}' \
+    --args 'string:{
+      "model": "gpt-4",
+      "messages": [{"role": "user", "content": "Say this is a test!"}],
+      "temperature": 0.7
+    }' \
+    --args 'string:.choices[].message.content' \
+    --args 'address:<orchestrator_address>' \
+    --args 'u256:50000000'
+  ```
+
+Note: Replace `<oracle_address>` and `<orchestrator_address>` with your actual deployed addresses.
