@@ -9,7 +9,7 @@ module verity_test_foreign_module::example_caller {
     use moveos_std::object::{ObjectID};
     use std::option::{Self, Option};
     use std::vector;
-    use std::string::String;
+    use std::string::{Self,String};
     use verity::oracles::{Self as Oracles};
     use rooch_framework::gas_coin::RGas;
     use rooch_framework::account_coin_store;
@@ -60,7 +60,7 @@ module verity_test_foreign_module::example_caller {
         // We're passing the address and function identifier of the recipient address. in this from <module_name>::<function_name>
         // If you do not want to pay for the Oracle to notify your contract, you can pass in option::none() as the argument.
         let payment = account_coin_store::withdraw<RGas>(from, amount);
-        let request_id = Oracles::new_request_with_payment(http_request, pick, oracle, Oracles::with_notify(@verity_test_foreign_module, b"example_caller::receive_data"),payment);
+        let request_id = Oracles::new_request_with_payment(http_request, pick, oracle, Oracles::with_notify(@verity_test_foreign_module, string::utf8(b"example_caller::receive_data")),payment);
         // let no_notify_request_id = Oracles::new_request(http_request, pick, oracle, Oracles::without_notify());
         let params = account::borrow_mut_resource<GlobalParams>(@verity_test_foreign_module);
         vector::push_back(&mut params.pending_requests, request_id);
