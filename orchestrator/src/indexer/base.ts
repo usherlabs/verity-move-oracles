@@ -115,10 +115,10 @@ export abstract class Indexer {
     const newRequestsEvents = await this.fetchRequestAddedEvents(Number(latestCommit?.eventSeq ?? 0) ?? 0);
     for (let i = 0; i < newRequestsEvents.length; i++) {
       try {
-        if (i > 0) await new Promise((resolve) => setTimeout(resolve, xTwitterInstance.getRequestRate));
-
         const event = newRequestsEvents[i];
         const data = await this.processRequestAddedEvent(event);
+
+        log.info({ data });
 
         if (data) {
           try {

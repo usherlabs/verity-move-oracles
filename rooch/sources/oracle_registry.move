@@ -26,7 +26,7 @@ module verity::registry {
         /// Cost per token for payload beyond minimum length
         cost_per_payload_token: u256,
         /// Cost per token for response data
-        cost_per_respond_token: u256,
+        cost_per_response_token: u256,
     }
 
     /// Global storage for oracle registry
@@ -72,7 +72,7 @@ module verity::registry {
         orchestrator: address,
         url: String,
         payload_length: u64,
-        respond_length: u64
+        response_length: u64
     ): Option<u256> {
         let supported_urls = &account::borrow_resource<GlobalParams>(@verity).supported_urls;
 
@@ -95,7 +95,7 @@ module verity::registry {
                     return option::some(
                         orchestrator_url.base_fee + 
                         (chargeable_token * orchestrator_url.cost_per_payload_token) + 
-                        (orchestrator_url.cost_per_respond_token * (respond_length as u256))
+                        (orchestrator_url.cost_per_response_token * (response_length as u256))
                     )
                 };
                 i = i + 1;
@@ -106,13 +106,13 @@ module verity::registry {
 
     /// Add support for a new URL endpoint with specified pricing parameters
     /// If URL already exists, updates the existing metadata
-    public fun add_supported_url(
+    public entry fun  add_supported_url(
         caller: &signer,
         url_prefix: String,
         base_fee: u256,
         minimum_payload_length: u64,
         cost_per_payload_token: u256,
-        cost_per_respond_token: u256
+        cost_per_response_token: u256
     ) {
         let sender = signer::address_of(caller);
         let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
@@ -128,7 +128,7 @@ module verity::registry {
             base_fee,
             minimum_payload_length,
             cost_per_payload_token,
-            cost_per_respond_token
+            cost_per_response_token
         };
 
         // Check if URL prefix already exists
@@ -163,7 +163,7 @@ module verity::registry {
 
     /// Remove support for a URL endpoint
     /// Aborts if URL is not found or caller is not the oracle
-    public fun remove_supported_url(
+    public  entry fun remove_supported_url(
         caller: &signer,
         url_prefix: String
     ) {

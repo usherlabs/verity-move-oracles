@@ -10,6 +10,6 @@ export default class TwitterIntegration extends BasicBearerAPIHandler {
 export const instance = new TwitterIntegration(
   env.integrations.openAIToken,
   ["api.x.com", "api.twitter.com"],
-  ["/2/tweets"],
+  ["/2/tweets", "/2/users/"],
   60 * 1000,
 );

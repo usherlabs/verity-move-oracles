@@ -50,7 +50,7 @@
   "dependencies": {
     "@aptos-labs/ts-sdk": "^1.29.1",
     "@prisma/client": "5.19.1",
-    "@roochnetwork/rooch-sdk": "^0.2.7",
+    "@roochnetwork/rooch-sdk": "^0.2.9",
     "@sentry/node": "^8.26.0",
     "@sentry/profiling-node": "^8.26.0",
     "axios": "^1.7.4",

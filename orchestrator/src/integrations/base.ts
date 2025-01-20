@@ -5,6 +5,8 @@ import axios, { type AxiosResponse } from "axios";
 import { run as jqRun } from "node-jq";
 
 export abstract class BasicBearerAPIHandler {
+  protected last_executed = 0;
+
   constructor(
     protected accessToken: string,
     protected supported_host: string[],
@@ -39,13 +41,24 @@ export abstract class BasicBearerAPIHandler {
 
   async submitRequest(data: ProcessedRequestAdded<any>): Promise<{ status: number; message: string }> {
     try {
+      const currentTime = Date.now();
+      const timeSinceLastExecution = currentTime - this.last_executed;
+
+      if (timeSinceLastExecution < this.getRequestRate) {
+        const waitTime = this.getRequestRate - timeSinceLastExecution;
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+      }
+
+      this.last_executed = Date.now();
+
       const url = data.params.url?.includes("http") ? data.params.url : `https://${data.params.url}`;
+
       try {
         const url_object = new URL(url);
         if (!this.isApprovedPath(url_object)) {
           return { status: 406, message: `${url_object} is supposed by this orchestrator` };
         }
-        if (this.validatePayload(url_object.pathname, data.params.body)) {
+        if (!this.validatePayload(url_object.pathname, data.params.body)) {
           return { status: 406, message: `Invalid Payload` };
         }
       } catch (err) {
@@ -54,11 +67,11 @@ export abstract class BasicBearerAPIHandler {
 
       const token = this.getAccessToken();
       let request: AxiosResponse<any, any>;
-      if (isValidJson(data.params.headers)) {
+      if (isValidJson(data.params.headers) && isValidJson(data.params.body)) {
         // TODO: Replace direct requests via axios with requests via VerityClient TS module
         request = await axios({
           method: data.params.method,
-          data: data.params.body,
+          data: JSON.parse(data.params.body),
           url: url,
           headers: {
             ...JSON.parse(data.params.headers),
@@ -79,6 +92,7 @@ export abstract class BasicBearerAPIHandler {
 
       try {
         const result = (await jqRun(data.pick, JSON.stringify(request.data), { input: "string" })) as string;
+        log.info({ status: request.status, message: result });
         return { status: request.status, message: result };
       } catch {
         return { status: 409, message: "`Pick` value provided could not be resolved on the returned response" };
