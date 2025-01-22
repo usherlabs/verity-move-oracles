@@ -28,3 +28,16 @@ model Events{
 
   @@index([eventHandleId, eventSeq,chain])
 }
+
+model Keeper{
+  id                        String    @id @default(cuid())
+  chain                     String    @default("ROOCH-testnet")
+  module                    String 
+  privateKey                String
+
+  createdAt                 DateTime  @default(now())
+  updateAt                  DateTime  @updatedAt
+
+  @@unique([chain, module])
+
+}

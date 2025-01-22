@@ -14,7 +14,7 @@ module verity::oracles {
     use moveos_std::account;
     use moveos_std::address;
     use moveos_std::object::{Self, ObjectID, Object};
-    use std::vector;
+
     use rooch_framework::coin::{Self, Coin};
     use rooch_framework::gas_coin::RGas;
     use rooch_framework::account_coin_store;
@@ -113,18 +113,20 @@ module verity::oracles {
     /// Update notification gas allocation for a specific notify address and user
     public entry fun update_notification_gas_allocation(
         from: &signer,
-        notify_address: String,
+        notify_address: address,
+        notify_function: String,
         amount: u256
     ) {
         let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
         let sender = signer::address_of(from);
+        let notification_endpoint= option::destroy_some(with_notify(notify_address,notify_function));
 
-        if (!simple_map::contains_key(&global_params.notification_gas_allocation, &notify_address)) {
+        if (!simple_map::contains_key(&global_params.notification_gas_allocation, &notification_endpoint)) {
             let user_allocations = simple_map::new();
             simple_map::add(&mut user_allocations, sender, amount);
-            simple_map::add(&mut global_params.notification_gas_allocation, notify_address, user_allocations);
+            simple_map::add(&mut global_params.notification_gas_allocation, notification_endpoint, user_allocations);
         } else {
-            let user_allocations = simple_map::borrow_mut(&mut global_params.notification_gas_allocation, &notify_address);
+            let user_allocations = simple_map::borrow_mut(&mut global_params.notification_gas_allocation, &notification_endpoint);
             if (!simple_map::contains_key(user_allocations, &sender)) {
                 simple_map::add(user_allocations, sender, amount);
             } else {
@@ -174,11 +176,10 @@ module verity::oracles {
         notify_address: address,
         notify_function: String,
     ): Option<String> {
-        let res = vector::empty<u8>();
-        vector::append(&mut res, address::to_bytes(&notify_address));
-        vector::append(&mut res, b"::"); // delimiter
-        vector::append(&mut res, string::into_bytes(notify_function));
-        option::some(string::utf8(res))
+        let res = address::to_string(&notify_address);
+        string::append(&mut res,string::utf8(b"::")); // append delimiter
+        string::append(&mut res ,notify_function);
+        option::some(res)
     }
 
     /// Create empty notification data
@@ -376,8 +377,8 @@ module verity::oracles {
         account_coin_store::deposit(caller_address, payment);
 
         let notification_cost =0;
-        if (option::is_some(&request.notify) && get_notification_gas_allocation_by_notification_address(option::destroy_some(request.notify),request.request_account)>0 ){
-            notification_cost =get_notification_gas_allocation_by_notification_address(option::destroy_some(request.notify),request.request_account);
+        if (option::is_some(&request.notify) && get_notification_gas_allocation_by_notification_endpoint(option::destroy_some(request.notify),request.request_account)>0 ){
+            notification_cost =get_notification_gas_allocation_by_notification_endpoint(option::destroy_some(request.notify),request.request_account);
             let notification_payment = coin_store::withdraw(&mut global_params.treasury, notification_cost);
             account_coin_store::deposit(keeper, notification_payment);
         };
@@ -480,22 +481,22 @@ module verity::oracles {
         notify_function: String,
         user: address
     ): u256 {
-        let notification_address= option::destroy_some(with_notify(notify_address,notify_function));
-        get_notification_gas_allocation_by_notification_address(notification_address,user)
+        let notification_endpoint= option::destroy_some(with_notify(notify_address,notify_function));
+        get_notification_gas_allocation_by_notification_endpoint(notification_endpoint,user)
     }
 
     #[view]
     // Get notification gas allocation for a specific notify address and user
-    public fun get_notification_gas_allocation_by_notification_address(
-        notification_address : String,
+    public fun get_notification_gas_allocation_by_notification_endpoint(
+        notification_endpoint : String,
         user: address
     ): u256 {
         let global_params = account::borrow_resource<GlobalParams>(@verity);
 
-        if (!simple_map::contains_key(&global_params.notification_gas_allocation, &notification_address)) {
+        if (!simple_map::contains_key(&global_params.notification_gas_allocation, &notification_endpoint)) {
             0
         } else {
-            let user_allocations = simple_map::borrow(&global_params.notification_gas_allocation, &notification_address);
+            let user_allocations = simple_map::borrow(&global_params.notification_gas_allocation, &notification_endpoint);
             if (!simple_map::contains_key(user_allocations, &user)) {
                 0
             } else {
@@ -639,13 +640,13 @@ module verity::test_oracles {
         let amount = 1000u256;
 
         // Test initial allocation
-        oracles::update_notification_gas_allocation(&sig, notify_address, amount);
-        assert!(oracles::get_notification_gas_allocation_by_notification_address(notify_address, sender) == amount, 99962);
+        oracles::update_notification_gas_allocation(&sig, sender, notify_address, amount);
+        assert!(oracles::get_notification_gas_allocation(sender, notify_address, sender) == amount, 99962);
 
         // Test updating existing allocation
         let new_amount = 2000u256;
-        oracles::update_notification_gas_allocation(&sig, notify_address, new_amount);
-        assert!(oracles::get_notification_gas_allocation_by_notification_address(notify_address, sender) == new_amount, 99963);
+        oracles::update_notification_gas_allocation(&sig, sender, notify_address, new_amount);
+        assert!(oracles::get_notification_gas_allocation(sender, notify_address, sender) == new_amount, 99963);
     }
 
     #[test]
@@ -661,20 +662,20 @@ module verity::test_oracles {
         let amount1 = 1000u256;
         let amount2 = 2000u256;
 
-        oracles::update_notification_gas_allocation(&sig, notify_address1, amount1);
-        oracles::update_notification_gas_allocation(&sig, notify_address2, amount2);
+        oracles::update_notification_gas_allocation(&sig, sender, notify_address1, amount1);
+        oracles::update_notification_gas_allocation(&sig, sender, notify_address2, amount2);
         
-        assert!(oracles::get_notification_gas_allocation_by_notification_address(notify_address1, sender) == amount1, 99964);
-        assert!(oracles::get_notification_gas_allocation_by_notification_address(notify_address2, sender) == amount2, 99965);
+        assert!(oracles::get_notification_gas_allocation(sender, notify_address1, sender) == amount1, 99964);
+        assert!(oracles::get_notification_gas_allocation(sender, notify_address2, sender) == amount2, 99965);
 
         // Update existing allocations
         let new_amount1 = 1500u256;
         let new_amount2 = 2500u256;
         
-        oracles::update_notification_gas_allocation(&sig, notify_address1, new_amount1);
-        oracles::update_notification_gas_allocation(&sig, notify_address2, new_amount2);
+        oracles::update_notification_gas_allocation(&sig, sender, notify_address1, new_amount1);
+        oracles::update_notification_gas_allocation(&sig, sender, notify_address2, new_amount2);
 
-        assert!(oracles::get_notification_gas_allocation_by_notification_address(notify_address1, sender) == new_amount1, 99966);
-        assert!(oracles::get_notification_gas_allocation_by_notification_address(notify_address2, sender) == new_amount2, 99967);
+        assert!(oracles::get_notification_gas_allocation(sender, notify_address1, sender) == new_amount1, 99966);
+        assert!(oracles::get_notification_gas_allocation(sender, notify_address2, sender) == new_amount2, 99967);
     }
 }

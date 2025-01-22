@@ -43,7 +43,7 @@ interface NotifyValue {
   value: VecValue;
 }
 interface VecValue {
-  vec: string[];
+  vec: { value: Array<Array<string>> } | any;
 }
 
 export interface IRequestAdded {

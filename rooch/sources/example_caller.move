@@ -13,8 +13,6 @@ module verity_test_foreign_module::example_caller {
     use verity::oracles::{Self as Oracles};
     use rooch_framework::gas_coin::RGas;
     use rooch_framework::account_coin_store;
-    #[test_only]
-    use verity::oracles;
 
     struct GlobalParams has key {
        pending_requests: vector<ObjectID>,
