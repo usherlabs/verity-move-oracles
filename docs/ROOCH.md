@@ -103,13 +103,13 @@ Additional steps for managing supported orchestrator URL
 - To add URL
 
 ```bash
-rooch move run --function 0x27e46e033da11c4d1f986081877e80cefb2b29dec1c559c97c3ccf12e910aba7::registry::add_supported_url --sender-account <orchestrator_address> --args 'string:https://api.x.com/2/users/' --args 'u256:400000' --args 'u64:0' --args 'u256:0' --args 'u256:0' 
+rooch move run --function <oracle_address>::registry::add_supported_url --sender-account <orchestrator_address> --args 'string:https://api.x.com/2/users/' --args 'u256:400000' --args 'u64:0' --args 'u256:0' --args 'u256:0' 
 ```
 
 - to remove URLs
 
 ```bash
-rooch move run --function 0x27e46e033da11c4d1f986081877e80cefb2b29dec1c559c97c3ccf12e910aba7::registry::remove_supported_url --sender-account <orchestrator_address> --args 'string:api.twitter.com/2/users/'
+rooch move run --function <oracle_address>::registry::remove_supported_url --sender-account <orchestrator_address> --args 'string:api.twitter.com/2/users/'
 ```
 
 - To view supported URLS
