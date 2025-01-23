@@ -20,7 +20,7 @@ module verity_test_foreign_module::example_caller {
 
     #[test_only]
     public fun init_for_test(){
-        oracles::init_for_test();
+        Oracles::init_for_test();
         init();
     }
 
@@ -76,22 +76,20 @@ module verity_test_foreign_module::example_caller {
             // Remove the fulfilled request from the pending_requests vector
             // This ensures unfulfilled requests are retained in the vector
             if (option::is_some(&Oracles::get_response(request_id))) {
-                vector::remove(&mut params.pending_requests, i);
-                // Decrement i to account for the removed element
-                if (i > 0) {
-                    i = i - 1;
+                let (found, index) = vector::index_of(&mut  params.pending_requests, request_id);
+                if (found){
+                    vector::remove(&mut params.pending_requests, index);
+                    // ? ------ OPTIONAL ------
+                    let request_url = Oracles::get_request_params_url(request_id);
+                    let request_method = Oracles::get_request_params_method(request_id);
+                    let response = Oracles::get_response(request_id);
+                    // For each fulfilment, emit an event
+                    event::emit(RequestFulfilledEvent {
+                    request_url,
+                    request_method,
+                    response,
+                    });
                 };
-
-                // ? ------ OPTIONAL ------
-                let request_url = Oracles::get_request_params_url(request_id);
-                let request_method = Oracles::get_request_params_method(request_id);
-                let response = Oracles::get_response(request_id);
-                // For each fulfilment, emit an event
-                event::emit(RequestFulfilledEvent {
-                  request_url,
-                  request_method,
-                  response,
-                });
                 // \ ------ OPTIONAL ------
             };
 
