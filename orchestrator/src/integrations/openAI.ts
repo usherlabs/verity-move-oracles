@@ -1,4 +1,5 @@
 import env from "@/env";
+import { log } from "@/logger";
 import Joi from "joi";
 import { BasicBearerAPIHandler } from "./base";
 
@@ -19,8 +20,8 @@ export default class OpenAIIntegration extends BasicBearerAPIHandler {
           const { error, value } = chatSchema.validate(JSON.parse(payload), {
             allowUnknown: true,
           });
-          console.log({ value, error });
           if (error) {
+            log.error({ value, error });
             return false;
           } else {
             if (value.model === "gpt-4o") {

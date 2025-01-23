@@ -281,12 +281,12 @@ export default class RoochIndexer extends Indexer {
         tx.callFunction({
           target: data.notify ?? "",
           args: [],
-          maxGas: 900_000,
         });
-        const receipt = await client.signAndExecuteTransaction({
+        const notification_receipt = await client.signAndExecuteTransaction({
           transaction: tx,
-          signer: this.keyPair,
+          signer: Secp256k1Keypair.fromSecretKey(keeper_key.privateKey),
         });
+        log.info({ notification_receipt });
       }
     } catch (err) {
       log.error({ request_id: data.request_id, err: err });

@@ -67,7 +67,7 @@ export abstract class BasicBearerAPIHandler {
 
       const token = this.getAccessToken();
       let request: AxiosResponse<any, any>;
-      console.log({ data, token });
+
       if (isValidJson(data.params.headers) && isValidJson(data.params.body)) {
         // TODO: Replace direct requests via axios with requests via VerityClient TS module
         request = await axios({

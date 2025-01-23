@@ -37,6 +37,7 @@ module verity::oracles {
     const InsufficientBalanceError: u64 = 1008;
     const NoBalanceError: u64 = 1009;
     const ZeroAmountError: u64 = 1010;
+    const MinGasLimitError: u64 = 1011;
 
     /// Struct to represent HTTP request parameters
     /// Designed to be imported by third-party contracts
@@ -117,6 +118,7 @@ module verity::oracles {
         notify_function: String,
         amount: u256
     ) {
+        assert!(amount==0 ||amount>500_000,MinGasLimitError);
         let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
         let sender = signer::address_of(from);
         let notification_endpoint= option::destroy_some(with_notify(notify_address,notify_function));
