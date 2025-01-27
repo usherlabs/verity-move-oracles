@@ -37,9 +37,13 @@ Navigate to the `rooch` directory, build the contracts for development, publish 
 ```bash
 cd rooch
 rooch move build --dev
-rooch move publish --named-addresses verity_test_foreign_module=default,verity=default
+rooch move publish --named-addresses verity=default --sender default
 cd ..
 ```
+
+###### Note:
+- A sender account is required for deployment and contract updates.
+- The account with the upgrade_Cap object can update/upgrade the contract by setting the --sender flag to their account with the upgrade_Cap.
 
 #### Step 4: Install Node Dependencies
 
@@ -99,19 +103,19 @@ Additional steps for managing supported orchestrator URL
 - To add URL
 
 ```bash
-rooch move run --function <oracle_address>::registry::add_supported_url --sender-account <orchestrator_address> --args 'string:https://api.x.com/2/users/' --args 'u256:400000' --args 'u64:0' --args 'u256:0' --args 'u256:0' 
+rooch move run --function 0x330895328871633518adee400b6b14d4475fa240965ce7923b50ba42b0ab50b9::registry::add_supported_url --sender-account 0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d --args 'string:https://api.openai.com/v1/chat/completions' --args 'u256:50000' --args 'u64:40' --args 'u256:4000' --args 'u256:5000' 
 ```
 
 - to remove URLs
 
 ```bash
-rooch move run --function <oracle_address>::registry::remove_supported_url --sender-account <orchestrator_address> --args 'string:api.twitter.com/2/users/'
+rooch move run --function 0x330895328871633518adee400b6b14d4475fa240965ce7923b50ba42b0ab50b9::registry::remove_supported_url --sender-account <orchestrator_address> --args 'string:https://api.twitter.com/2/users/'
 ```
 
 - To view supported URLS
 
 ```bash
- rooch move view --function <oracle_address>::registry::get_supported_urls  --args 'address:<orchestrator_address>' 
+ rooch move view --function 0x330895328871633518adee400b6b14d4475fa240965ce7923b50ba42b0ab50b9::registry::get_supported_urls  --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' 
 ```
 
 
@@ -138,23 +142,28 @@ rooch move run --function  <contractAddress>::example_caller::request_data --sen
 Here's an example of requesting the Twitter Followers Count on a Local Rooch Node:
 
 ```bash
-rooch move run --function 0x0d6144b074dd19a9ff581abd5bf7815a39222c8b3ac68ce5938c9d9723544e08::example_caller::request_data --sender-account default --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' --args 'u256:50000000'
+rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::example_caller::request_data --sender-account default --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' --args 'u256:50000'
 ```
 or 
 ```bash
-rooch move run --function 0x0d6144b074dd19a9ff581abd5bf7815a39222c8b3ac68ce5938c9d9723544e08::example_caller::request_data --sender-account default --args 'string:https://api.openai.com/v1/chat/completions' --args 'string:POST' --args 'string:{}' --args 'string:{
+rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::example_caller::request_data --sender-account default --args 'string:https://api.openai.com/v1/chat/completions' --args 'string:POST' --args 'string:{}' --args 'string:{
      "model": "gpt-4o-mini",
      "messages": [{"role": "user", "content": "Say this is a test!"}],
      "temperature": 0.7
    }' --args 'string:.choices[].message.content' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' --args 'u256:50000000'
 ```
-
 To check the state of the response object on a local Rooch node, use the following command:
 
 ```bash
 rooch state -a /object/0x7a01ddf194f8a1c19212d56f747294352bf2e5cf23e6e10e64937aa1955704b0
 ```
 
+
+Additionally, 
+For notification calls you can allocated an portion form escrow for notification
+```bash
+rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::oracles::update_notification_gas_allocation --sender-account default  --args 'address:0x27e46e033da11c4d1f986081877e80cefb2b29dec1c559c97c3ccf12e910aba7' --args 'string:example_caller::receive_data' --args 'u256:90000'
+```
 
 #### Step 10: Manage Escrow balance
 
