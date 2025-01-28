@@ -118,7 +118,7 @@ module verity::oracles {
         notify_function: String,
         amount: u256
     ) {
-        assert!(amount==0 ||amount>500_000,MinGasLimitError);
+        assert!(amount==0 ||amount>=500_000,MinGasLimitError);
         let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
         let sender = signer::address_of(from);
         let notification_endpoint= option::destroy_some(with_notify(notify_address,notify_function));
@@ -639,14 +639,14 @@ module verity::test_oracles {
         let sig = signer::module_signer<Test>();
         let sender = signer::address_of(&sig);
         let notify_address = string::utf8(b"test_notify_address");
-        let amount = 1000u256;
+        let amount = 1_000_000u256;
 
         // Test initial allocation
         oracles::update_notification_gas_allocation(&sig, sender, notify_address, amount);
         assert!(oracles::get_notification_gas_allocation(sender, notify_address, sender) == amount, 99962);
 
         // Test updating existing allocation
-        let new_amount = 2000u256;
+        let new_amount = 2_1_000_000u256;
         oracles::update_notification_gas_allocation(&sig, sender, notify_address, new_amount);
         assert!(oracles::get_notification_gas_allocation(sender, notify_address, sender) == new_amount, 99963);
     }
@@ -661,8 +661,8 @@ module verity::test_oracles {
         // Test multiple notify addresses
         let notify_address1 = string::utf8(b"test_notify_address1");
         let notify_address2 = string::utf8(b"test_notify_address2");
-        let amount1 = 1000u256;
-        let amount2 = 2000u256;
+        let amount1 = 1_000_000u256;
+        let amount2 = 2_000_000u256;
 
         oracles::update_notification_gas_allocation(&sig, sender, notify_address1, amount1);
         oracles::update_notification_gas_allocation(&sig, sender, notify_address2, amount2);
@@ -671,8 +671,8 @@ module verity::test_oracles {
         assert!(oracles::get_notification_gas_allocation(sender, notify_address2, sender) == amount2, 99965);
 
         // Update existing allocations
-        let new_amount1 = 1500u256;
-        let new_amount2 = 2500u256;
+        let new_amount1 = 500_000u256;
+        let new_amount2 = 2_500_000u256;
         
         oracles::update_notification_gas_allocation(&sig, sender, notify_address1, new_amount1);
         oracles::update_notification_gas_allocation(&sig, sender, notify_address2, new_amount2);
