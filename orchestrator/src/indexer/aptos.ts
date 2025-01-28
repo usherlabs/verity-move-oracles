@@ -142,7 +142,6 @@ export default class AptosIndexer extends Indexer {
         })
         .filter((elem) => elem != null);
 
-
       const data: any[] = _temp.map((elem) => ({
         ...elem.data,
         notify: decodeNotifyValue(elem.data.notify?.value?.vec?.at(0) ?? ""),
@@ -235,6 +234,7 @@ export default class AptosIndexer extends Indexer {
       retries: 0,
       response: JSON.stringify(data),
       chain: this.getChainId(),
+      oracleAddress: this.oracleAddress,
       status,
     };
     log.debug({ eventHandleId: event.fullData.event_id.event_handle_id, eventSeq: +event.fullData.event_id.event_seq });

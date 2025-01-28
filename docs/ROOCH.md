@@ -37,7 +37,7 @@ Navigate to the `rooch` directory, build the contracts for development, publish 
 ```bash
 cd rooch
 rooch move build --dev
-rooch move publish --named-addresses verity=default --sender default
+rooch move publish --named-addresses verity=0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231,verity_test_foreign_module=0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231 --sender 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231
 cd ..
 ```
 
@@ -95,7 +95,7 @@ rooch account export --address <Rooch Address>
 
 To connect to the local Rooch node, set `ROOCH_CHAIN_ID` to `"localnet"`.  
 Otherwise, connect to testNet by setting `ROOCH_CHAIN_ID` to `"testnet"`, or to TestNet by setting `ROOCH_CHAIN_ID` to `"testnet"`.  
-Ensure that `ROOCH_ORACLE_ADDRESS` is set to the address of the deployed module, e.g., `"0x85859e45551846d9ab8651bb0b6f6e1740c9d758cfda05cfc39d49e2a604d783"`.
+Ensure that `ROOCH_ORACLE_ADDRESS` is set to the address of the deployed module, e.g., `"0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231"`.
 
 #### Step 7: Register supported URL
 Additional steps for managing supported orchestrator URL
@@ -103,19 +103,19 @@ Additional steps for managing supported orchestrator URL
 - To add URL
 
 ```bash
-rooch move run --function 0x330895328871633518adee400b6b14d4475fa240965ce7923b50ba42b0ab50b9::registry::add_supported_url --sender-account 0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d --args 'string:https://api.openai.com/v1/chat/completions' --args 'u256:50000' --args 'u64:40' --args 'u256:4000' --args 'u256:5000' 
+rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::registry::add_supported_url --sender-account 0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d --args 'string:https://api.openai.com/v1/chat/completions' --args 'u256:50000' --args 'u64:40' --args 'u256:4000' --args 'u256:5000' 
 ```
 
 - to remove URLs
 
 ```bash
-rooch move run --function 0x330895328871633518adee400b6b14d4475fa240965ce7923b50ba42b0ab50b9::registry::remove_supported_url --sender-account <orchestrator_address> --args 'string:https://api.twitter.com/2/users/'
+rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::registry::remove_supported_url --sender-account <orchestrator_address> --args 'string:https://api.twitter.com/2/users/'
 ```
 
 - To view supported URLS
 
 ```bash
- rooch move view --function 0x330895328871633518adee400b6b14d4475fa240965ce7923b50ba42b0ab50b9::registry::get_supported_urls  --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' 
+ rooch move view --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::registry::get_supported_urls  --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' 
 ```
 
 
@@ -150,7 +150,7 @@ rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff
      "model": "gpt-4o-mini",
      "messages": [{"role": "user", "content": "Say this is a test!"}],
      "temperature": 0.7
-   }' --args 'string:.choices[].message.content' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' --args 'u256:50000000'
+   }' --args 'string:.choices[].message.content' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' --args 'u256:5000000000'
 ```
 To check the state of the response object on a local Rooch node, use the following command:
 

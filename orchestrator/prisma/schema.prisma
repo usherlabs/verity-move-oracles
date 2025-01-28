@@ -19,6 +19,7 @@ model Events{
   eventIndex                String
   decoded_event_data        String  //JSON String
   chain                     String   @default("ROOCH-testnet")
+  oracleAddress             String   @default("0x9ce8eaf2166e9a6d4e8f1d27626297a0cf5ba1eaeb31137e08cc8f7773fb83f8")
 
   status                    Int
   retries                   Int
@@ -26,7 +27,7 @@ model Events{
   indexedAt                 DateTime  @default(now())
   updateAt                  DateTime  @updatedAt
 
-  @@index([eventHandleId, eventSeq,chain])
+  @@index([eventHandleId, eventSeq,chain, oracleAddress])
 }
 
 model Keeper{

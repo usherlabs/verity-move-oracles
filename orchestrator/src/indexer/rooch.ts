@@ -2,7 +2,7 @@ import env from "@/env";
 import { instance as xTwitterInstance } from "@/integrations/xtwitter";
 import { log } from "@/logger";
 import type { IEvent, IRequestAdded, JsonRpcResponse, ProcessedRequestAdded, RoochNetwork } from "@/types";
-import { decodeNotifyValueFull } from "@/util";
+import { decodeNotifyValue, decodeNotifyValueFull } from "@/util";
 import { Args, RoochClient, Secp256k1Keypair, Transaction, getRoochNodeUrl } from "@roochnetwork/rooch-sdk";
 import axios from "axios";
 import prismaClient from "../../prisma";
@@ -205,7 +205,10 @@ export default class RoochIndexer extends Indexer {
           oracle: values.oracle,
           pick: values.pick,
           request_id: values.request_id,
-          notify: decodeNotifyValueFull(values.notify?.value?.vec?.value?.at(0).at(0) ?? ""),
+          notify:
+            this.oracleAddress === "0x9ce8eaf2166e9a6d4e8f1d27626297a0cf5ba1eaeb31137e08cc8f7773fb83f8"
+              ? decodeNotifyValue(values.notify?.value?.vec?.at(0) ?? "")
+              : decodeNotifyValueFull(values.notify?.value?.vec?.value?.at(0).at(0) ?? ""),
         };
         return data;
       });
@@ -256,12 +259,15 @@ export default class RoochIndexer extends Indexer {
     const tx = new Transaction();
     tx.callFunction({
       target: `${this.oracleAddress}::oracles::fulfil_request`,
-      args: [
-        Args.objectId(data.request_id),
-        Args.u16(status),
-        Args.string(result),
-        Args.address(Secp256k1Keypair.fromSecretKey(keeper_key.privateKey).getRoochAddress().toHexAddress()),
-      ],
+      args:
+        this.oracleAddress === "0x9ce8eaf2166e9a6d4e8f1d27626297a0cf5ba1eaeb31137e08cc8f7773fb83f8"
+          ? [Args.objectId(data.request_id), Args.u16(status), Args.string(result)]
+          : [
+              Args.objectId(data.request_id),
+              Args.u16(status),
+              Args.string(result),
+              Args.address(Secp256k1Keypair.fromSecretKey(keeper_key.privateKey).getRoochAddress().toHexAddress()),
+            ],
     });
 
     const receipt = await client.signAndExecuteTransaction({
@@ -284,7 +290,10 @@ export default class RoochIndexer extends Indexer {
         });
         const notification_receipt = await client.signAndExecuteTransaction({
           transaction: tx,
-          signer: Secp256k1Keypair.fromSecretKey(keeper_key.privateKey),
+          signer:
+            this.oracleAddress === "0x9ce8eaf2166e9a6d4e8f1d27626297a0cf5ba1eaeb31137e08cc8f7773fb83f8"
+              ? this.keyPair
+              : Secp256k1Keypair.fromSecretKey(keeper_key.privateKey),
         });
         log.info({ notification_receipt });
       }
@@ -305,6 +314,7 @@ export default class RoochIndexer extends Indexer {
       retries: 0,
       response: JSON.stringify(data),
       chain: this.getChainId(),
+      oracleAddress: this.oracleAddress,
       status,
     };
 

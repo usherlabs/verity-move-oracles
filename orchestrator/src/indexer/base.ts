@@ -104,6 +104,7 @@ export abstract class Indexer {
     const latestCommit = await prismaClient.events.findFirst({
       where: {
         chain: this.getChainId(),
+        oracleAddress: this.oracleAddress,
       },
       orderBy: {
         eventSeq: "desc",

@@ -10,7 +10,12 @@ const baseConfig = {
     ? process.env.ROOCH_CHAIN_ID.split(",")
     : ["testnet", "pre-mainnet"]) as RoochNetwork[],
   roochPrivateKey: process.env.ROOCH_PRIVATE_KEY ?? "",
-  roochOracleAddress: process.env.ROOCH_ORACLE_ADDRESS ?? "",
+  roochOracleAddress: (process.env.ROOCH_ORACLE_ADDRESS
+    ? process.env.ROOCH_ORACLE_ADDRESS.split(",")
+    : [
+        "0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231",
+        "0x9ce8eaf2166e9a6d4e8f1d27626297a0cf5ba1eaeb31137e08cc8f7773fb83f8",
+      ]) as string[],
   roochIndexerCron: process.env.ROOCH_INDEXER_CRON,
   // Aptos
   aptosChainId: process.env.APTOS_CHAIN_ID,
@@ -30,7 +35,7 @@ const baseConfig = {
 interface IEnvVars {
   chains: SupportedChain[];
   roochChainId: RoochNetwork[];
-  roochOracleAddress: string;
+  roochOracleAddress: string[];
   roochPrivateKey: string;
   roochIndexerCron: string;
   aptosChainId: Network;
@@ -62,9 +67,11 @@ const envVarsSchema = Joi.object({
         .default(RoochNetworkList[0]),
     )
     .default([RoochNetworkList[0]]),
-  roochOracleAddress: isRequiredWhenChainsInclude(
-    Joi.string().custom((value, helper) => addressValidator(value, helper)),
-    SupportedChain.ROOCH,
+  roochOracleAddress: Joi.array().items(
+    isRequiredWhenChainsInclude(
+      Joi.string().custom((value, helper) => addressValidator(value, helper)),
+      SupportedChain.ROOCH,
+    ),
   ),
   roochPrivateKey: isRequiredWhenChainsInclude(
     Joi.string().custom((value, helper) => {

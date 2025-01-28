@@ -13,7 +13,39 @@ import { log } from "./logger";
     // https://www.npmjs.com/package/cron#cronjob-class
 
     env.rooch.chainId.map((chain) => {
-      const rooch = new RoochIndexer(env.rooch.privateKey, chain, env.rooch.oracleAddress);
+      const rooch = new RoochIndexer(env.rooch.privateKey, chain, env.rooch.oracleAddress[0]);
+      new CronJob(
+        "*/15 * * * *",
+        () => {
+          rooch.sendUnfulfilledRequests();
+        },
+        null,
+        false,
+      );
+      new CronJob(
+        env.rooch.indexerCron,
+        () => {
+          rooch.run();
+        },
+        null,
+        true,
+      );
+    });
+  } else {
+    log.info(`Skipping Rooch Indexer initialization...`);
+  }
+
+  if (
+    env.rooch.privateKey &&
+    env.rooch.chainId.length > 0 &&
+    env.rooch.oracleAddress &&
+    env.chains.includes("ROOCH") &&
+    env.rooch.oracleAddress?.at(1)
+  ) {
+    // https://www.npmjs.com/package/cron#cronjob-class
+
+    env.rooch.chainId.map((chain) => {
+      const rooch = new RoochIndexer(env.rooch.privateKey, chain, env.rooch.oracleAddress[1]);
       new CronJob(
         "*/15 * * * *",
         () => {
