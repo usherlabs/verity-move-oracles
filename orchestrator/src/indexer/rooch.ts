@@ -254,7 +254,6 @@ export default class RoochIndexer extends Indexer {
         const tx = new Transaction();
         tx.callFunction({
           target: data.notify ?? "",
-          maxGas: 10_000,
         });
 
         const receipt = await client.signAndExecuteTransaction({

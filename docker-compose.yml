@@ -5,7 +5,7 @@ services:
     image: postgres:16
     hostname: postgres
     restart: always
-    container_name: verity-move-postgres
+    container_name: verity-move-postgres2
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -27,8 +27,8 @@ services:
     build: 
       dockerfile: ./orch.dockerfile
       context: .
-    image: orchestrator:move
-    container_name: verity-move-orchestrator
+    image: orchestrator2:move
+    container_name: verity-move-orchestrator2
     environment:
       DATABASE_URL: ${DATABASE_URL}
     networks:
@@ -43,8 +43,8 @@ services:
       "
 
 volumes:
-  postgres-db-data:
+  postgres-db-data2:
 
 networks:
-  verify-network:
+  verify-network2:
     driver: bridge
