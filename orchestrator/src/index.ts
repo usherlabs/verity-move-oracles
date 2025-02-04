@@ -16,19 +16,13 @@ import { log } from "./logger";
       const rooch = new RoochIndexer(env.rooch.privateKey, chain, env.rooch.oracleAddress);
       const job = new CronJob(
         env.rooch.indexerCron,
-        async (_job) => {
-          log.info({ _job, job });
-          if (job.running) {
-            return;
+        async () => {
+          if (!job.running) {
+            rooch.run();
           }
-
-          job.running = true;
-          await rooch.run();
-          job.running = false;
         },
         null,
         true,
-        "UTC",
       );
     });
   } else {
