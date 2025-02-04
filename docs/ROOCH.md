@@ -132,18 +132,18 @@ pnpm dev
 Finally, send a new request transaction to have it indexed. Make sure to replace placeholders with actual values relevant to your setup.
 
 ```bash
-rooch move run --function  <contractAddress>::example_caller::request_data --sender-account default --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:<Orchestrator Address>'
+rooch move run --function  0x9ce8eaf2166e9a6d4e8f1d27626297a0cf5ba1eaeb31137e08cc8f7773fb83f8::example_caller::request_data --sender-account default --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d'
 ```
 
 Here's an example of requesting the Twitter Followers Count on a Local Rooch Node:
 
 ```bash
-rooch move run --function 0x0d6144b074dd19a9ff581abd5bf7815a39222c8b3ac68ce5938c9d9723544e08::example_caller::request_data --sender-account default --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' --args 'u256:50000000'
+rooch move run --function 0x9ce8eaf2166e9a6d4e8f1d27626297a0cf5ba1eaeb31137e08cc8f7773fb83f8::example_caller::request_data --sender-account default --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' 
 ```
 or 
 ```bash
-rooch move run --function 0x0d6144b074dd19a9ff581abd5bf7815a39222c8b3ac68ce5938c9d9723544e08::example_caller::request_data --sender-account default --args 'string:https://api.openai.com/v1/chat/completions' --args 'string:POST' --args 'string:{}' --args 'string:{
-     "model": "gpt-4o-mini",
+rooch move run --function 0x9ce8eaf2166e9a6d4e8f1d27626297a0cf5ba1eaeb31137e08cc8f7773fb83f8::example_caller::request_data --sender-account 0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d --args 'string:https://api.openai.com/v1/chat/completions' --args 'string:POST' --args 'string:{}' --args 'string:{
+     "model": "gpt-4o",
      "messages": [{"role": "user", "content": "Say this is a test!"}],
      "temperature": 0.7
    }' --args 'string:.choices[].message.content' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' --args 'u256:50000000'
