@@ -14,21 +14,20 @@ import { log } from "./logger";
 
     env.rooch.chainId.map((chain) => {
       const rooch = new RoochIndexer(env.rooch.privateKey, chain, env.rooch.oracleAddress);
-      new CronJob(
-        "*/15 * * * *",
-        () => {
-          rooch.sendUnfulfilledRequests();
-        },
-        null,
-        false,
-      );
-      new CronJob(
+      const job = new CronJob(
         env.rooch.indexerCron,
-        () => {
-          rooch.run();
+        async () => {
+          if (job.running) {
+            return;
+          }
+
+          job.running = true;
+          await rooch.run();
+          job.running = false;
         },
         null,
         true,
+        "UTC",
       );
     });
   } else {
