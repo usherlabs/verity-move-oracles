@@ -2,8 +2,7 @@ import { log } from "@/logger";
 import type { ProcessedRequestAdded } from "@/types";
 import { isValidJson } from "@/util";
 import axios, { type AxiosResponse } from "axios";
-import { run as jqRun } from "node-jq";
-
+import jsonata from "jsonata";
 export abstract class BasicBearerAPIHandler {
   protected last_executed = 0;
 
@@ -67,7 +66,6 @@ export abstract class BasicBearerAPIHandler {
 
       const token = this.getAccessToken();
       let request: AxiosResponse<any, any>;
-
       if (isValidJson(data.params.headers) && isValidJson(data.params.body)) {
         // TODO: Replace direct requests via axios with requests via VerityClient TS module
         request = await axios({
@@ -92,7 +90,11 @@ export abstract class BasicBearerAPIHandler {
       }
 
       try {
-        const result = (await jqRun(data.pick, JSON.stringify(request.data), { input: "string" })) as string;
+        // const result = (await jqRun(data.pick, JSON.stringify(request.data), { input: "string" })) as string;
+        const expression = jsonata(
+          data.pick === "." ? "*" : data.pick.startsWith(".") ? data.pick.replace(".", "") : data.pick,
+        );
+        const result = await expression.evaluate(request.data);
         log.info({ status: request.status, message: result });
         return { status: request.status, message: result };
       } catch {
