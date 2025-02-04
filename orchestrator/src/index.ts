@@ -14,6 +14,7 @@ import { log } from "./logger";
 
     env.rooch.chainId.map((chain) => {
       const rooch = new RoochIndexer(env.rooch.privateKey, chain, env.rooch.oracleAddress);
+
       const job = new CronJob(
         env.rooch.indexerCron,
         async () => {
