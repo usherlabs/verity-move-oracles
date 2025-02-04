@@ -14,18 +14,15 @@ import { log } from "./logger";
 
     env.rooch.chainId.map((chain) => {
       const rooch = new RoochIndexer(env.rooch.privateKey, chain, env.rooch.oracleAddress);
-      new CronJob(
-        "*/15 * * * *",
-        () => {
-          rooch.sendUnfulfilledRequests();
-        },
-        null,
-        false,
-      );
-      new CronJob(
+      let running = false;
+      const job = new CronJob(
         env.rooch.indexerCron,
-        () => {
-          rooch.run();
+        async () => {
+          if (!running) {
+            running = true;
+            await rooch.run();
+            running = false;
+          }
         },
         null,
         true,

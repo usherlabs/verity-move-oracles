@@ -19,6 +19,8 @@ export abstract class Indexer {
   // Abstract: Implementation To fetch Data
   abstract fetchRequestAddedEvents<T>(cursor: null | number | string): Promise<ProcessedRequestAdded<T>[]>;
 
+  abstract isPreviouslyExecuted<T>(data: ProcessedRequestAdded<T>): Promise<boolean>;
+
   // Abstract: Implementation to send Fulfillment  blockchain fulfillment Request
   /**
    * Sends a fulfillment transaction to on-chain Contract.
@@ -116,18 +118,24 @@ export abstract class Indexer {
     for (let i = 0; i < newRequestsEvents.length; i++) {
       try {
         const event = newRequestsEvents[i];
-        const data = await this.processRequestAddedEvent(event);
 
-        log.info({ data });
+        if (!(await this.isPreviouslyExecuted(event))) {
+          const data = await this.processRequestAddedEvent(event);
 
-        if (data) {
-          try {
-            await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
-            await this.save(event, data, RequestStatus.SUCCESS);
-          } catch (err: any) {
-            log.error({ err: err.message });
-            await this.save(event, data, RequestStatus.FAILED);
+          log.info({ data });
+
+          if (data) {
+            try {
+              await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
+              await this.save(event, data, RequestStatus.SUCCESS);
+            } catch (err: any) {
+              log.error({ err: err.message });
+              await this.save(event, data, RequestStatus.FAILED);
+            }
           }
+        } else {
+          log.debug({ message: `Request: ${event.request_id} as already been processed` });
+          await this.save(event, {}, RequestStatus.SUCCESS);
         }
       } catch (error) {
         console.error(`Error processing event ${i}:`, error);
