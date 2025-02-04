@@ -135,6 +135,7 @@ export abstract class Indexer {
           }
         } else {
           log.debug({ message: `Request: ${event.request_id} as already been processed` });
+          await this.save(event, {}, RequestStatus.SUCCESS);
         }
       } catch (error) {
         console.error(`Error processing event ${i}:`, error);
