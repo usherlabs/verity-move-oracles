@@ -142,7 +142,6 @@ export default class AptosIndexer extends Indexer {
         })
         .filter((elem) => elem != null);
 
-
       const data: any[] = _temp.map((elem) => ({
         ...elem.data,
         notify: decodeNotifyValue(elem.data.notify?.value?.vec?.at(0) ?? ""),
@@ -160,6 +159,22 @@ export default class AptosIndexer extends Indexer {
       log.error("Error fetching events", { error: error?.message });
       return [];
     }
+  }
+
+  async isPreviouslyExecuted(data: ProcessedRequestAdded<any>) {
+    const aptosConfig = new AptosConfig({ network: Network.TESTNET });
+    const aptos = new Aptos(aptosConfig);
+    const view_request = await aptos.view({
+      payload: {
+        function: `${this.oracleAddress}::oracles::get_response_status`,
+        functionArguments: [data.request_id],
+      },
+    });
+    if (view_request[0] !== 0) {
+      log.debug({ message: `Request: ${data.request_id} as already been processed` });
+      return true;
+    }
+    return false;
   }
 
   /**

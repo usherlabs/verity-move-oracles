@@ -19,9 +19,9 @@ services:
     ports:
       - "5432:5432"
     networks:
-      - verify-network
+      - verify-network2
     volumes:
-      - postgres-db-data:/var/lib/postgresql/data
+      - postgres-db-data2:/var/lib/postgresql/data
 
   orchestrator:
     build: 
@@ -32,7 +32,7 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL}
     networks:
-      - verify-network
+      - verify-network2
     depends_on:
       postgres_db:
         condition: service_healthy

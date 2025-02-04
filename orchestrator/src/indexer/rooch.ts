@@ -215,6 +215,22 @@ export default class RoochIndexer extends Indexer {
     }
   }
 
+  async isPreviouslyExecuted(data: ProcessedRequestAdded<any>) {
+    const client = new RoochClient({
+      url: this.getRoochNodeUrl(),
+    });
+    const view = await client.executeViewFunction({
+      target: `${this.oracleAddress}::oracles::get_response_status`,
+      args: [Args.objectId(data.request_id)],
+    });
+
+    if (view.vm_status === "Executed" && view.return_values && view.return_values[0].decoded_value !== 0) {
+      log.debug({ message: `Request: ${data.request_id} as already been processed` });
+      return true;
+    }
+    return false;
+  }
+
   /**
    * Sends a fulfillment transaction to the Rooch Oracles Contract.
    *

@@ -13,10 +13,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # env:
-    #   RUST_BACKTRACE=1
-    #   # ROOCH_ORACLE_ADDRESS= ${{ secrets.ROOCH_ORACLE_ADDRESS }}
-    #   # ROOCH_PRIVATE_KEY= ${{ secrets.ROOCH_PRIVATE_KEY }}
 
     strategy:
       matrix:
