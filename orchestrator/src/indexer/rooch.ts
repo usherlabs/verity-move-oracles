@@ -280,6 +280,8 @@ export default class RoochIndexer extends Indexer {
       ],
     });
 
+    tx.setMaxGas(1000000000);
+
     const receipt = await client.signAndExecuteTransaction({
       transaction: tx,
       signer: this.keyPair,
