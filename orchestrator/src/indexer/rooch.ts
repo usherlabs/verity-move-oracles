@@ -259,6 +259,7 @@ export default class RoochIndexer extends Indexer {
       target: `${this.oracleAddress}::oracles::fulfil_request`,
       args: [Args.objectId(data.request_id), Args.u16(status), Args.string(result)],
     });
+    tx.setMaxGas(1_000_000_000);
 
     const receipt = await client.signAndExecuteTransaction({
       transaction: tx,
