@@ -94,7 +94,8 @@ export abstract class BasicBearerAPIHandler {
         const expression = jsonata(
           data.pick === "." ? "*" : data.pick.startsWith(".") ? data.pick.replace(".", "") : data.pick,
         );
-        const result = await expression.evaluate(request.data);
+        const result =
+          data.pick === "." ? JSON.stringify(request.data) : JSON.stringify(await expression.evaluate(request.data));
         log.info({ status: request.status, message: result });
         return { status: request.status, message: result };
       } catch {
