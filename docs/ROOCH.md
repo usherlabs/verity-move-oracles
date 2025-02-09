@@ -103,19 +103,19 @@ Additional steps for managing supported orchestrator URL
 - To add URL
 
 ```bash
-rooch move run --function 0x330895328871633518adee400b6b14d4475fa240965ce7923b50ba42b0ab50b9::registry::add_supported_url --sender-account 0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d --args 'string:https://api.openai.com/v1/chat/completions' --args 'u256:50000' --args 'u64:40' --args 'u256:4000' --args 'u256:5000' 
+rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::registry::add_supported_url --sender-account 0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d --args 'string:https://api.openai.com/v1/chat/completions' --args 'u256:50000' --args 'u64:40' --args 'u256:4000' --args 'u256:5000' 
 ```
 
 - to remove URLs
 
 ```bash
-rooch move run --function 0x330895328871633518adee400b6b14d4475fa240965ce7923b50ba42b0ab50b9::registry::remove_supported_url --sender-account <orchestrator_address> --args 'string:https://api.twitter.com/2/users/'
+rooch move run --function  0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::registry::remove_supported_url --sender-account <orchestrator_address> --args 'string:https://api.twitter.com/2/users/'
 ```
 
 - To view supported URLS
 
 ```bash
- rooch move view --function 0x330895328871633518adee400b6b14d4475fa240965ce7923b50ba42b0ab50b9::registry::get_supported_urls  --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' 
+ rooch move view --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::registry::get_supported_urls  --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' 
 ```
 
 
@@ -146,11 +146,7 @@ rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff
 ```
 or 
 ```bash
-rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::example_caller::request_data --sender-account default --args 'string:https://api.openai.com/v1/chat/completions' --args 'string:POST' --args 'string:{}' --args 'string:{
-     "model": "gpt-4o-mini",
-     "messages": [{"role": "user", "content": "Say this is a test!"}],
-     "temperature": 0.7
-   }' --args 'string:.choices[].message.content' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' --args 'u256:50000000'
+rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::example_caller::request_data --sender-account default --args 'string:https://api.openai.com/v1/chat/completions' --args 'string:POST' --args 'string:{}' --args 'string:{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Say this is a test!"}],"temperature": 0.7}' --args 'string:.choices[].message.content' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' --args 'u256:50000000'
 ```
 To check the state of the response object on a local Rooch node, use the following command:
 
@@ -160,9 +156,9 @@ rooch state -a /object/0x7a01ddf194f8a1c19212d56f747294352bf2e5cf23e6e10e64937aa
 
 
 Additionally, 
-For notification calls you can allocated an portion form escrow for notification
+For notification calls you can allocated an portion form escrow for notification per fulfilment Request(Recommended 1Rgas for the first fulfilment).
 ```bash
-rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::oracles::update_notification_gas_allocation --sender-account default  --args 'address:0x27e46e033da11c4d1f986081877e80cefb2b29dec1c559c97c3ccf12e910aba7' --args 'string:example_caller::receive_data' --args 'u256:90000'
+rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::oracles::update_notification_gas_allocation --sender-account default  --args 'address:0x27e46e033da11c4d1f986081877e80cefb2b29dec1c559c97c3ccf12e910aba7' --args 'string:example_caller::receive_data' --args 'u256:10000000'
 ```
 
 #### Step 10: Manage Escrow balance
@@ -170,17 +166,17 @@ rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff
 - To view balance 
 
 ```bash
-rooch move view --function 0x0d6144b074dd19a9ff581abd5bf7815a39222c8b3ac68ce5938c9d9723544e08::oracles::get_user_balance  --args 'address:<your_address>' 
+rooch move view --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::oracles::get_user_balance  --args 'address:<your_address>' 
 ```
 
 - To withdraw Balance
 ```bash
-rooch move run --function 0x0d6144b074dd19a9ff581abd5bf7815a39222c8b3ac68ce5938c9d9723544e08::oracles::withdraw_from_escrow  --args 'u256:<amount>' 
+rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::oracles::withdraw_from_escrow  --args 'u256:<amount>' 
 ```
 
 - To Deposit 
 ```bash
-rooch move run --function 0x0d6144b074dd19a9ff581abd5bf7815a39222c8b3ac68ce5938c9d9723544e08::oracles::deposit_to_escrow  --args 'u256:<amount>' 
+rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::oracles::deposit_to_escrow  --args 'u256:<amount>' 
 ```
 
 To confirm the `Request` Object State, use the Object ID generated from the initial transaction to query the state of the response object.
@@ -191,7 +187,7 @@ This allows you to verify that the request was processed successfully and that t
 An example of requesting the Twitter Followers Count on a Rooch Testnet:
 
 ```bash
-rooch move run --function 0x0d6144b074dd19a9ff581abd5bf7815a39222c8b3ac68ce5938c9d9723544e08::example_caller::request_data --sender-account default --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d'
+rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::example_caller::request_data --sender-account default --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d'
 ```
 
 To check the state of the response object on testnet, devnet, or mainnet, 

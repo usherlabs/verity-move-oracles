@@ -287,11 +287,11 @@ export default class RoochIndexer extends Indexer {
       signer: this.keyPair,
     });
 
-    console.log({
-      keeper_key,
+    log.info({
       address: Secp256k1Keypair.fromSecretKey(keeper_key.privateKey).getRoochAddress().toHexAddress(),
       target: data.notify ?? "",
       oracleAddress: this.oracleAddress,
+      receipt,
     });
     try {
       if ((data.notify?.length ?? 0) > 66) {

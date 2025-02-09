@@ -233,9 +233,9 @@ module verity::oracles {
         payment: Coin<RGas>
     ): ObjectID {
         let sent_coin = coin::value(&payment);
-        // 1024 could be changed to the max string length allowed on Move
-        // This 1024 is a default estaimate for the expected payload length, however, it's the user's responsibility to cover in case of requests that expect large payload responses.
-        let option_min_amount = OracleSupport::estimated_cost(oracle, params.url, string::length(&params.body), 1024);
+        // 65536 could be changed to the max string length allowed on Move
+        // This 65536 is a default estaimate for the expected payload length, however, it's the user's responsibility to cover in case of requests that expect large payload responses.
+        let option_min_amount = OracleSupport::estimated_cost(oracle, params.url, string::length(&params.body), 65536);
         assert!(option::is_some(&option_min_amount), OracleSupportError);
         let min_amount = option::destroy_some(option_min_amount);
 
@@ -261,8 +261,8 @@ module verity::oracles {
     ): ObjectID {
         let sender = tx_context::sender();
         let account_balance = get_user_balance(sender);
-        // 1024 could be changed to the max string length allowed on Move
-        let option_min_amount = OracleSupport::estimated_cost(oracle, params.url, string::length(&params.body), 1024);
+        // 65536 could be changed to the max string length allowed on Move
+        let option_min_amount = OracleSupport::estimated_cost(oracle, params.url, string::length(&params.body), 65536);
         assert!(option::is_some(&option_min_amount), OracleSupportError);
         let min_amount = option::destroy_some(option_min_amount);
 
@@ -381,12 +381,13 @@ module verity::oracles {
         let notification_cost =0;
         if (option::is_some(&request.notify) && get_notification_gas_allocation_by_notification_endpoint(option::destroy_some(request.notify),request.request_account)>0 ){
             notification_cost =get_notification_gas_allocation_by_notification_endpoint(option::destroy_some(request.notify),request.request_account);
-            let notification_payment = coin_store::withdraw(&mut global_params.treasury, notification_cost);
-            account_coin_store::deposit(keeper, notification_payment);
         };
-
         // add extra to balance if any exists 
-        if (request.amount > fulfillment_cost && (request.amount - fulfillment_cost - notification_cost) > 0) {
+        if (request.amount > fulfillment_cost + notification_cost) {
+            if(notification_cost>0){
+                let notification_payment = coin_store::withdraw(&mut global_params.treasury, notification_cost);
+                account_coin_store::deposit(keeper, notification_payment);
+            };
             if (!simple_map::contains_key(&global_params.balances, &request.request_account)) {
                 simple_map::add(&mut global_params.balances, request.request_account, request.amount - fulfillment_cost-notification_cost);
             } else {
