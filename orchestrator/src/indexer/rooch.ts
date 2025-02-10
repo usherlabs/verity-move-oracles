@@ -280,16 +280,18 @@ export default class RoochIndexer extends Indexer {
       ],
     });
 
+    tx.setMaxGas(1000000000);
+
     const receipt = await client.signAndExecuteTransaction({
       transaction: tx,
       signer: this.keyPair,
     });
 
-    console.log({
-      keeper_key,
+    log.info({
       address: Secp256k1Keypair.fromSecretKey(keeper_key.privateKey).getRoochAddress().toHexAddress(),
       target: data.notify ?? "",
       oracleAddress: this.oracleAddress,
+      receipt,
     });
     try {
       if ((data.notify?.length ?? 0) > 66) {
