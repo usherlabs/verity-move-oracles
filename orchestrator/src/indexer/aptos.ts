@@ -41,7 +41,7 @@ export default class AptosIndexer extends Indexer {
    * Using official Aptos Labs endpoint for better reliability.
    */
   getRpcUrl(): string {
-    return `https://fullnode.testnet.aptoslabs.com/v1`;
+    return `https://fullnode.${this.chainId === Network.TESTNET ? "testnet" : "mainnet"}.aptoslabs.com/v1`;
   }
 
   /**
