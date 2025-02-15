@@ -1,5 +1,6 @@
 import env from "@/env";
 import { log } from "@/logger";
+import { fetchTwitterData } from "@/services/twitter";
 import type { AptosBlockMetadataTransaction, AptosTransactionData, ProcessedRequestAdded } from "@/types";
 import { decodeNotifyValue } from "@/util";
 import { Account, Aptos, AptosConfig, Ed25519PrivateKey, Network } from "@aptos-labs/ts-sdk";
@@ -26,15 +27,21 @@ export default class AptosIndexer extends Indexer {
     this.account = account;
     this.lastTxVersion = 0;
     log.info(`Aptos Indexer initialized`);
-    log.info(`Chain ID: ${this.getChainId()} \n\t\tOrchestrator Oracle Node Address: ${this.orchestrator}`);
+    log.info(
+      `Chain ID: ${this.getChainId()} \n\t\tOracle Address: ${this.oracleAddress}\n\t\tAccount Address: ${account.accountAddress.toString()}`,
+    );
   }
 
   getChainId(): string {
     return `APTOS-${this.chainId}`;
   }
 
+  /**
+   * Returns the RPC URL for the Aptos network.
+   * Using official Aptos Labs endpoint for better reliability.
+   */
   getRpcUrl(): string {
-    return `https://aptos-${this.chainId === Network.TESTNET ? "testnet" : "mainnet"}.nodit.io`;
+    return `https://fullnode.testnet.aptoslabs.com/v1`;
   }
 
   /**
@@ -48,15 +55,10 @@ export default class AptosIndexer extends Indexer {
    * @returns {Promise<AptosBlockMetadataTransaction[]>} A promise that resolves to an array of Aptos block metadata transactions.
    */
   async fetchTransactionList(transactionIDs: number[]): Promise<AptosBlockMetadataTransaction[]> {
-    // Could be optimized by using Promise.settled preventing a single failed request to fail the entire operation
     return await Promise.all(
       transactionIDs.map(async (transaction) => {
         const response: AptosBlockMetadataTransaction = (
-          await axios.get(`${this.getRpcUrl()}/v1/transactions/by_version/${transaction}`, {
-            headers: {
-              "X-API-KEY": env.aptos.noditKey,
-            },
-          })
+          await axios.get(`${this.getRpcUrl()}/transactions/by_version/${transaction}`)
         ).data;
         return response;
       }),
@@ -77,7 +79,11 @@ export default class AptosIndexer extends Indexer {
    */
   async fetchRequestAddedEvents(cursor: null | number | string = null): Promise<ProcessedRequestAdded<any>[]> {
     try {
-      const endpoint = `${this.getRpcUrl()}/${env.aptos.noditKey}/v1/graphql`;
+      const client = new GraphQLClient("https://indexer-testnet.staging.gcp.aptosdev.com/v1/graphql", {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
       const document = gql`
           query Account_transactions ($version: bigint!,$address: String!) {
@@ -102,13 +108,9 @@ export default class AptosIndexer extends Indexer {
         internalCursor = this.lastTxVersion;
       }
 
-      const client = new GraphQLClient(endpoint);
-      const gqlData: AptosTransactionData = await client.request({
-        document,
-        variables: {
-          version: internalCursor,
-          address: this.oracleAddress.toLowerCase(),
-        },
+      const gqlData: AptosTransactionData = await client.request(document, {
+        version: internalCursor,
+        address: this.oracleAddress.toLowerCase(),
       });
 
       if (gqlData.account_transactions.length === 0) {
@@ -186,77 +188,133 @@ export default class AptosIndexer extends Indexer {
    * @returns {Promise<any>} - The receipt of the transaction.
    */
   async sendFulfillment(data: ProcessedRequestAdded<any>, status: number, result: string) {
-    // Set up the Aptos client
-    const aptosConfig = new AptosConfig({ network: Network.TESTNET });
-    const aptos = new Aptos(aptosConfig);
-    const view_request = await aptos.view({
-      payload: {
-        function: `${this.oracleAddress}::oracles::get_response_status`,
-        functionArguments: [data.request_id],
-      },
-    });
-    if (view_request[0] !== 0) {
-      log.debug({ message: `Request: ${data.request_id} as already been processed` });
-      return null;
-    }
     try {
-      // Build the transaction payload
-      const payload = await aptos.transaction.build.simple({
-        sender: this.account.accountAddress,
-        data: {
-          function: `${this.oracleAddress}::oracles::fulfil_request`,
-          functionArguments: [data.request_id, status, result],
-        },
-      });
+      const client = new Aptos(
+        new AptosConfig({
+          network: this.chainId,
+        }),
+      );
 
-      // Sign and submit the transaction
-      const pendingTxn = await aptos.signAndSubmitTransaction({
-        signer: this.account,
-        transaction: payload,
-      });
+      try {
+        const accountInfo = await client.account.getAccountInfo({ accountAddress: this.account.accountAddress });
+        log.debug(`Account verified: ${this.account.accountAddress.toString()}`);
+      } catch (e) {
+        log.error(`Account not found or not funded: ${this.account.accountAddress.toString()}`);
+        throw new Error(
+          `Account not initialized on chain. Please fund account: ${this.account.accountAddress.toString()}`,
+        );
+      }
 
-      // Wait for the transaction to be processed
-      const executedTransaction = await aptos.waitForTransaction({ transactionHash: pendingTxn.hash });
+      try {
+        const transaction = await client.transaction.build.simple({
+          sender: this.account.accountAddress,
+          data: {
+            function: `${this.oracleAddress}::oracles::fulfil_request` as const,
+            typeArguments: [],
+            functionArguments: [data.request_id, status, result],
+          },
+        });
 
-      log.debug("Transaction executed:", executedTransaction.hash);
+        const signedTx = await client.signAndSubmitTransaction({
+          signer: this.account,
+          transaction,
+        });
+
+        const txResult = await client.waitForTransaction({
+          transactionHash: signedTx.hash,
+        });
+
+        log.info(`Fulfillment transaction successful: ${signedTx.hash}`);
+        return txResult;
+      } catch (e) {
+        log.error("Transaction failed:", e);
+        throw e;
+      }
     } catch (error) {
-      console.error("Error calling entry function:", error);
+      log.error("Error in sendFulfillment:", error);
+      throw error;
     }
   }
 
-  async save(
-    event: ProcessedRequestAdded<{
-      event_id: {
-        event_handle_id: string;
-        event_seq: number;
+  async processRequestAddedEvent(event: ProcessedRequestAdded<any>) {
+    try {
+      if (event.params.url.includes("api.x.com")) {
+        console.log("Using Twitter API with token:", env.integrations.xBearerToken);
+        return await fetchTwitterData(event.params.url);
+      } else {
+        throw new Error(`Unsupported API endpoint: ${event.params.url}`);
+      }
+    } catch (error: any) {
+      log.error("Error in processRequestAddedEvent:", error);
+      return {
+        status: 500,
+        message: error instanceof Error ? error.message : String(error),
       };
-      event_index: number;
-      event_data: {
-        [key: string]: any;
+    }
+  }
+
+  async processRequest(data: ProcessedRequestAdded<any>) {
+    try {
+      if (data.params.url.includes("api.x.com")) {
+        log.info("Processing Twitter API request");
+        const response = await fetchTwitterData(data.params.url);
+
+        if (!response) {
+          throw new Error("No response from Twitter API");
+        }
+
+        log.debug("Twitter API Response:", { status: response.status });
+        await this.sendFulfillment(data, response.status, response.message);
+      } else {
+        throw new Error(`Unsupported API endpoint: ${data.params.url}`);
+      }
+    } catch (error) {
+      log.error("Error processing request:", error);
+      await this.save(
+        data,
+        {
+          error: error instanceof Error ? error.message : String(error),
+        },
+        500,
+      );
+      throw error;
+    }
+  }
+
+  async save(event: ProcessedRequestAdded<any>, data: any, status: number) {
+    try {
+      const dbEventData = {
+        eventHandleId: event.fullData.event_id.event_handle_id,
+        eventSeq: +event.fullData.event_id.event_seq,
+        eventData: JSON.stringify(event.fullData.event_data),
+        eventType: event.fullData.event_type,
+        eventIndex: event.fullData.event_index.toString(),
+        decoded_event_data: JSON.stringify(event.fullData.decoded_event_data),
+        retries: 0,
+        response: JSON.stringify(data),
+        chain: this.getChainId(),
+        status,
       };
-      event_type: string;
-      decoded_event_data: string;
-    }>,
-    data: any,
-    status: number,
-  ) {
-    const dbEventData = {
-      eventHandleId: event.fullData.event_id.event_handle_id,
-      eventSeq: +event.fullData.event_id.event_seq,
-      eventData: JSON.stringify(event.fullData.event_data),
-      eventType: event.fullData.event_type,
-      eventIndex: event.fullData.event_index.toString(),
-      decoded_event_data: JSON.stringify(event.fullData.decoded_event_data),
-      retries: 0,
-      response: JSON.stringify(data),
-      chain: this.getChainId(),
-      status,
-    };
-    log.debug({ eventHandleId: event.fullData.event_id.event_handle_id, eventSeq: +event.fullData.event_id.event_seq });
-    await prismaClient.events.create({
-      data: {
-        ...dbEventData,
-      },
-    });
+
+      log.debug("Attempting to save event to database:", dbEventData);
+
+      const savedEvent = await prismaClient.events.create({
+        data: dbEventData,
+      });
+
+      log.info("Successfully saved event to database:", {
+        eventId: savedEvent.id,
+        status: savedEvent.status,
+      });
+
+      return savedEvent;
+    } catch (error) {
+      log.error("Failed to save event to database:", {
+        error: error instanceof Error ? error.message : String(error),
+        eventData: event,
+        status,
+      });
+      throw error;
+    }
   }
 }
