@@ -14,6 +14,7 @@ module verity::oracles {
     use moveos_std::account;
     use moveos_std::address;
     use moveos_std::object::{Self, ObjectID, Object};
+    use moveos_std::simple_map::{Self, SimpleMap};
     use moveos_std::table::{Self, Table};
 
     use rooch_framework::coin::{Self, Coin};
@@ -23,7 +24,6 @@ module verity::oracles {
     use std::string::{Self, String};
     use std::option::{Self, Option};
     use std::vector;
-    use moveos_std::simple_map::{Self, SimpleMap};
 
     #[test_only]
     use rooch_framework::genesis;
