@@ -7,6 +7,11 @@ import { instance as xTwitterInstance } from "@/integrations/xtwitter";
 import type { BasicBearerAPIHandler } from "@/integrations/base";
 import prismaClient from "../../prisma";
 
+type ChainEventData = {
+  id?: { txDigest: string };
+  event_id?: { event_handle_id: string };
+};
+
 // Abstract base class
 export abstract class Indexer {
   constructor(
@@ -75,15 +80,13 @@ export abstract class Indexer {
   async processRequestAddedEvent<T>(
     data: ProcessedRequestAdded<T>,
   ): Promise<{ status: number; message: string } | null> {
-    log.debug("processing request:", data.request_id);
+    log.debug(`processing request: ${data.request_id}`);
 
-    if (data.oracle.toLowerCase() !== this.getOrchestratorAddress().toLowerCase()) {
-      log.debug(
-        "skipping request as it's not for this Oracle:",
-        data.request_id,
-        this.getOrchestratorAddress().toLowerCase(),
-        data.oracle.toLowerCase(),
-      );
+    const eventOracle = data.oracle.toLowerCase();
+    const oracleAddress = this.getOracleAddress().toLowerCase();
+
+    if (eventOracle !== oracleAddress) {
+      log.debug(`skipping request as it's not for this Oracle: ${data.request_id} ${eventOracle} ${oracleAddress}`);
       return null;
     }
     try {
@@ -95,67 +98,65 @@ export abstract class Indexer {
         return handler.submitRequest(data);
       }
       return { status: 406, message: "URL Not supported" };
-    } catch {
+    } catch (error: any) {
       return { status: 406, message: "Invalid URL" };
     }
   }
 
   async run() {
-    log.info(`${this.getChainId()} indexer running...`, Date.now());
-
-    const latestCommit = await prismaClient.events.findFirst({
+    const latestSuccessfulEvent = await prismaClient.events.findFirst({
       where: {
         chain: this.getChainId(),
+        status: RequestStatus.SUCCESS,
       },
       orderBy: {
         eventSeq: "desc",
-        // indexedAt: "desc", // Order by date in descending order
       },
     });
 
-    // Fetch the latest events from the Aptos Oracles Contract
-    const newRequestsEvents = await this.fetchRequestAddedEvents(Number(latestCommit?.eventSeq ?? 0) ?? 0);
-    for (let i = 0; i < newRequestsEvents.length; i++) {
+    const cursor = latestSuccessfulEvent?.eventHandleId || null;
+    const newRequestsEvents = await this.fetchRequestAddedEvents(cursor);
+
+    for (const event of newRequestsEvents) {
       try {
-        const event = newRequestsEvents[i];
-
-        if (!(await this.isPreviouslyExecuted(event))) {
-          const data = await this.processRequestAddedEvent(event);
-
-          log.info({ data });
-
-          if (data) {
-            try {
-              await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
-              await this.save(event, data, RequestStatus.SUCCESS);
-            } catch (err: any) {
-              log.error({ err: err.message });
-              await this.save(event, data, RequestStatus.FAILED);
-            }
-          }
-        } else {
-          log.debug({ message: `Request: ${event.request_id} as already been processed` });
-          await this.save(event, {}, RequestStatus.SUCCESS);
+        // First check if request is already executed on-chain
+        if (await this.isPreviouslyExecuted(event)) {
+          log.debug(`Skipping already executed request: ${event.request_id}`);
+          continue;
         }
-      } catch (error) {
-        console.error(`Error processing event ${i}:`, error);
+
+        // Then check our database for any previous processing attempts
+        const existingEvent = await prismaClient.events.findFirst({
+          where: {
+            AND: [
+              { chain: this.getChainId() },
+              {
+                OR: [
+                  { eventHandleId: event.request_id },
+                  { eventHandleId: (event.fullData as ChainEventData)?.id?.txDigest },
+                ],
+              },
+            ],
+          },
+        });
+
+        if (existingEvent) {
+          log.debug(`Skipping previously processed event: ${event.request_id}`);
+          continue;
+        }
+
+        const data = await this.processRequestAddedEvent(event);
+        if (data && data.status === 200) {
+          await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
+          await this.save(event, data, RequestStatus.SUCCESS);
+        }
+        // Don't save failed events at all
+      } catch (error: any) {
+        log.error(`Error processing event ${event.request_id}:`, {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        // Don't save error events
       }
     }
-
-    // await Promise.all(
-    //   newRequestsEvents.map(async (event) => {
-    //     const data = await this.processRequestAddedEvent(event);
-    //     if (data) {
-    //       try {
-    //         await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
-    //         // TODO: Use the notify parameter to send transaction to the contract and function to marked in the request event
-    //         await this.save(event, data, RequestStatus.SUCCESS);
-    //       } catch (err: any) {
-    //         log.error({ err: err.message });
-    //         await this.save(event, data, RequestStatus.FAILED);
-    //       }
-    //     }
-    //   }),
-    // );
   }
 }
