@@ -14,6 +14,8 @@ module verity::oracles {
     use moveos_std::account;
     use moveos_std::address;
     use moveos_std::object::{Self, ObjectID, Object};
+    use moveos_std::simple_map::{Self, SimpleMap};
+    use moveos_std::table::{Self, Table};
 
     use rooch_framework::coin::{Self, Coin};
     use rooch_framework::gas_coin::RGas;
@@ -21,7 +23,7 @@ module verity::oracles {
     use rooch_framework::coin_store::{Self, CoinStore};
     use std::string::{Self, String};
     use std::option::{Self, Option};
-    use moveos_std::simple_map::{Self, SimpleMap};
+    use std::vector;
 
     #[test_only]
     use rooch_framework::genesis;
@@ -73,6 +75,16 @@ module verity::oracles {
         notification_gas_allocation: SimpleMap<String, SimpleMap<address, u256>>
     }
 
+    /// New global parameters structure using Table
+    struct GlobalParamsV2 has key {
+        owner: address,
+        treasury: Object<CoinStore<RGas>>,
+        // Use Table instead of SimpleMap for better performance
+        balances: Table<address, u256>,
+        // Notification gas allocations using Table
+        notification_gas_allocation: Table<String, Table<address, u256>>
+    }
+
     // -------- Events --------
     /// Event emitted when a new request is added
     struct RequestAdded has copy, drop {
@@ -98,6 +110,12 @@ module verity::oracles {
 
     /// Initialize the oracle system
     fun init() {
+        init_v1();
+        let module_signer = signer::module_signer<GlobalParams>();
+        migrate_to_v2(&module_signer);
+    }
+
+    fun init_v1(){
         let module_signer = signer::module_signer<GlobalParams>();
         let owner = tx_context::sender();
         let treasury_obj = coin_store::create_coin_store<RGas>();
@@ -110,6 +128,67 @@ module verity::oracles {
         });
     }
 
+    /// Migration function to move from V1 to V2
+    public entry fun migrate_to_v2(account: &signer) {
+        assert!(signer::address_of(account) == @verity, OnlyOwnerError);
+        
+        // Unpack old params directly
+        let GlobalParams {
+            owner,
+            treasury,
+            balances: old_balances,
+            notification_gas_allocation: old_notifications
+        } = account::move_resource_from<GlobalParams>(@verity);
+        
+        // Create new tables
+        let new_balances = table::new();
+        let new_notifications = table::new();
+
+        // Migrate balances
+        let balance_keys = simple_map::keys(&old_balances);
+        let balance_values = simple_map::values(&old_balances);
+        let i = 0;
+        let len = vector::length(&balance_keys);
+        while (i < len) {
+            let key = vector::borrow(&balance_keys, i);
+            let value = vector::borrow(&balance_values, i);
+            table::add(&mut new_balances, *key, *value);
+            i = i + 1;
+        };
+
+        // Migrate notification allocations
+        let notify_keys = simple_map::keys(&old_notifications);
+        let notify_values = simple_map::values(&old_notifications);
+        let i = 0;
+        let len = vector::length(&notify_keys);
+        while (i < len) {
+            let notify_endpoint = vector::borrow(&notify_keys, i);
+            let user_allocations = vector::borrow(&notify_values, i);
+            
+            let new_user_table = table::new();
+            let user_keys = simple_map::keys(user_allocations);
+            let user_values = simple_map::values(user_allocations);
+            let j = 0;
+            let user_len = vector::length(&user_keys);
+            while (j < user_len) {
+                let user = vector::borrow(&user_keys, j);
+                let amount = vector::borrow(&user_values, j);
+                table::add(&mut new_user_table, *user, *amount);
+                j = j + 1;
+            };
+            
+            table::add(&mut new_notifications, *notify_endpoint, new_user_table);
+            i = i + 1;
+        };
+
+        // Create and move new GlobalParamsV2
+        account::move_resource_to(account, GlobalParamsV2 {
+            owner,
+            treasury,
+            balances: new_balances,
+            notification_gas_allocation: new_notifications
+        });
+    }
 
     /// Update notification gas allocation for a specific notify address and user
     public entry fun update_notification_gas_allocation(
@@ -119,20 +198,20 @@ module verity::oracles {
         amount: u256
     ) {
         assert!(amount==0 ||amount>500_000,MinGasLimitError);
-        let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
+        let global_params = account::borrow_mut_resource<GlobalParamsV2>(@verity);
         let sender = signer::address_of(from);
         let notification_endpoint= option::destroy_some(with_notify(notify_address,notify_function));
 
-        if (!simple_map::contains_key(&global_params.notification_gas_allocation, &notification_endpoint)) {
-            let user_allocations = simple_map::new();
-            simple_map::add(&mut user_allocations, sender, amount);
-            simple_map::add(&mut global_params.notification_gas_allocation, notification_endpoint, user_allocations);
+        if (!table::contains(&global_params.notification_gas_allocation, notification_endpoint)) {
+            let user_allocations = table::new();
+            table::add(&mut user_allocations, sender, amount);
+            table::add(&mut global_params.notification_gas_allocation, notification_endpoint, user_allocations);
         } else {
-            let user_allocations = simple_map::borrow_mut(&mut global_params.notification_gas_allocation, &notification_endpoint);
-            if (!simple_map::contains_key(user_allocations, &sender)) {
-                simple_map::add(user_allocations, sender, amount);
+            let user_allocations = table::borrow_mut(&mut global_params.notification_gas_allocation, notification_endpoint);
+            if (!table::contains(user_allocations, sender)) {
+                table::add(user_allocations, sender, amount);
             } else {
-                let user_amount = simple_map::borrow_mut(user_allocations, &sender);
+                let user_amount = table::borrow_mut(user_allocations, sender);
                 *user_amount = amount;
             }
         }
@@ -147,12 +226,11 @@ module verity::oracles {
     }
 
     /// Change the owner of the oracle system
-    /// Only callable by current owner
     public entry fun set_owner(
         new_owner: address
     ) {
         let owner = tx_context::sender();
-        let params = account::borrow_mut_resource<GlobalParams>(@verity);
+        let params = account::borrow_mut_resource<GlobalParamsV2>(@verity);
         assert!(params.owner == owner, OnlyOwnerError);
         params.owner = new_owner;
     }
@@ -224,7 +302,6 @@ module verity::oracles {
     }
 
     /// Creates a new oracle request with direct payment
-    /// Caller must provide sufficient RGas payment
     public fun new_request_with_payment(
         params: HTTPRequest,
         pick: String,
@@ -240,7 +317,7 @@ module verity::oracles {
         let min_amount = option::destroy_some(option_min_amount);
 
         assert!(sent_coin >= min_amount, NotEnoughGasError);
-        let global_param = account::borrow_mut_resource<GlobalParams>(@verity);
+        let global_param = account::borrow_mut_resource<GlobalParamsV2>(@verity);
         coin_store::deposit(&mut global_param.treasury, payment);
 
         return create_request(
@@ -267,8 +344,8 @@ module verity::oracles {
         let min_amount = option::destroy_some(option_min_amount);
 
         assert!(account_balance >= min_amount, NotEnoughGasError);
-        let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
-        let balance = simple_map::borrow_mut(&mut global_params.balances, &sender);
+        let global_params = account::borrow_mut_resource<GlobalParamsV2>(@verity);
+        let balance = table::borrow_mut(&mut global_params.balances, sender);
         *balance = *balance - min_amount;
 
         return create_request(
@@ -285,16 +362,16 @@ module verity::oracles {
         // Check that amount is not zero
         assert!(amount > 0, ZeroAmountError);
         
-        let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
+        let global_params = account::borrow_mut_resource<GlobalParamsV2>(@verity);
         let sender = signer::address_of(from);
         
         let deposit = account_coin_store::withdraw<RGas>(from, amount);
         coin_store::deposit(&mut global_params.treasury, deposit);
 
-        if (!simple_map::contains_key(&global_params.balances, &sender)) {
-            simple_map::add(&mut global_params.balances, sender, amount);
+        if (!table::contains(&global_params.balances, sender)) {
+            table::add(&mut global_params.balances, sender, amount);
         } else {
-            let balance = simple_map::borrow_mut(&mut global_params.balances, &sender);
+            let balance = table::borrow_mut(&mut global_params.balances, sender);
             *balance = *balance + amount;
         };
 
@@ -311,13 +388,13 @@ module verity::oracles {
         // Check that amount is not zero
         assert!(amount > 0, ZeroAmountError);
         
-        let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
+        let global_params = account::borrow_mut_resource<GlobalParamsV2>(@verity);
         let sender = signer::address_of(from);
         
         // Check if user has a balance
-        assert!(simple_map::contains_key(&global_params.balances, &sender), NoBalanceError);
+        assert!(table::contains(&global_params.balances, sender), NoBalanceError);
         
-        let balance = simple_map::borrow_mut(&mut global_params.balances, &sender);
+        let balance = table::borrow_mut(&mut global_params.balances, sender);
         // Check if user has enough balance
         assert!(*balance >= amount, InsufficientBalanceError);
         
@@ -326,7 +403,7 @@ module verity::oracles {
         
         // If balance becomes zero, remove the entry
         if (*balance == 0) {
-            simple_map::remove(&mut global_params.balances, &sender);
+            table::remove(&mut global_params.balances, sender);
         };
         
         // Withdraw from treasury and deposit to user
@@ -373,12 +450,12 @@ module verity::oracles {
         let fulfillment_cost = option::destroy_some(option_fulfillment_cost);
 
         // send token to orchestrator wallet
-        let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
+        let global_params = account::borrow_mut_resource<GlobalParamsV2>(@verity);
         let payment = coin_store::withdraw(&mut global_params.treasury, fulfillment_cost);
 
         account_coin_store::deposit(caller_address, payment);
 
-        let notification_cost =0;
+        let notification_cost = 0;
         if (option::is_some(&request.notify) && get_notification_gas_allocation_by_notification_endpoint(option::destroy_some(request.notify),request.request_account)>0 ){
             notification_cost =get_notification_gas_allocation_by_notification_endpoint(option::destroy_some(request.notify),request.request_account);
         };
@@ -388,10 +465,10 @@ module verity::oracles {
                 let notification_payment = coin_store::withdraw(&mut global_params.treasury, notification_cost);
                 account_coin_store::deposit(keeper, notification_payment);
             };
-            if (!simple_map::contains_key(&global_params.balances, &request.request_account)) {
-                simple_map::add(&mut global_params.balances, request.request_account, request.amount - fulfillment_cost-notification_cost);
+            if (!table::contains(&global_params.balances, request.request_account)) {
+                table::add(&mut global_params.balances, request.request_account, request.amount - fulfillment_cost-notification_cost);
             } else {
-                let balance = simple_map::borrow_mut(&mut global_params.balances, &request.request_account);
+                let balance = table::borrow_mut(&mut global_params.balances, request.request_account);
                 *balance = *balance + request.amount - fulfillment_cost- notification_cost;
             };
         };
@@ -468,10 +545,9 @@ module verity::oracles {
 
     #[view]
     public fun get_user_balance(user: address): u256 {
-        let global_params = account::borrow_resource<GlobalParams>(@verity);
-
-        if (simple_map::contains_key(&global_params.balances, &user)) {
-            *simple_map::borrow(&global_params.balances, &user)
+        let global_params = account::borrow_resource<GlobalParamsV2>(@verity);
+        if (table::contains(&global_params.balances, user)) {
+            *table::borrow(&global_params.balances, user)
         } else {
             0
         }
@@ -494,17 +570,17 @@ module verity::oracles {
         notification_endpoint : String,
         user: address
     ): u256 {
-        let global_params = account::borrow_resource<GlobalParams>(@verity);
+        let global_params = account::borrow_resource<GlobalParamsV2>(@verity);
 
-        if (!simple_map::contains_key(&global_params.notification_gas_allocation, &notification_endpoint)) {
-            0
+        if (!table::contains(&global_params.notification_gas_allocation, notification_endpoint)) {
+            return 0
+        };
+        
+        let user_allocations = table::borrow(&global_params.notification_gas_allocation, notification_endpoint);
+        if (table::contains(user_allocations, user)) {
+            *table::borrow(user_allocations, user)
         } else {
-            let user_allocations = simple_map::borrow(&global_params.notification_gas_allocation, &notification_endpoint);
-            if (!simple_map::contains_key(user_allocations, &user)) {
-                0
-            } else {
-                *simple_map::borrow(user_allocations, &user)
-            }
+            0
         }
     }
 }
@@ -681,4 +757,5 @@ module verity::test_oracles {
         assert!(oracles::get_notification_gas_allocation(sender, notify_address1, sender) == new_amount1, 99966);
         assert!(oracles::get_notification_gas_allocation(sender, notify_address2, sender) == new_amount2, 99967);
     }
+
 }

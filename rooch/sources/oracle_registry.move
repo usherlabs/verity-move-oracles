@@ -1,19 +1,23 @@
 /// Module for managing oracle registry and URL support in the Verity system.
 /// This module handles registration of oracles, their supported URLs, and cost calculations.
 module verity::registry {
-    use std::option::{Self, Option};
     use moveos_std::signer;
-    use std::vector;
     use moveos_std::event;
     use moveos_std::account;
-    use std::string::{Self, String};
     use moveos_std::simple_map::{Self, SimpleMap};
     use moveos_std::string_utils;
+    use moveos_std::table::{Self, Table};
+
+    use std::option::{Self, Option};
+    use std::string::{Self, String};
+    use std::vector;
 
     /// Error code when caller is not a registered oracle
     const NotOracleError: u64 = 2001;
     /// Error code when URL prefix is invalid or not found 
     const InvalidURLPrefixError: u64 = 2002;
+    const OnlyOwnerError: u64 = 2003;
+
 
     /// Metadata structure for supported URL endpoints
     struct SupportedURLMetadata has copy, drop, store {
@@ -35,12 +39,15 @@ module verity::registry {
         supported_urls: SimpleMap<address, vector<SupportedURLMetadata>>,
     }
 
+    /// New global parameters structure using Table
+    struct GlobalParamsV2 has key {
+        supported_urls: Table<address, vector<SupportedURLMetadata>>
+    }
     /// Initialize the registry module
     fun init() {
-        let module_signer = signer::module_signer<GlobalParams>();
-        account::move_resource_to(&module_signer, GlobalParams {
-            supported_urls: simple_map::new(),
-        });
+        init_v1();
+        let module_signer = signer::module_signer<GlobalParamsV2>();
+        migrate_to_v2(&module_signer);
     }
 
     #[test_only]
@@ -65,6 +72,42 @@ module verity::registry {
         url: String
     }
 
+    fun init_v1() {
+        let module_signer = signer::module_signer<GlobalParams>();
+        account::move_resource_to(&module_signer, GlobalParams {
+            supported_urls: simple_map::new(),
+        });
+    }
+
+
+    /// Migration function to move from V1 to V2
+    public entry fun migrate_to_v2(account: &signer) {
+        assert!(signer::address_of(account) == @verity, OnlyOwnerError);
+        
+        // Unpack old GlobalParams
+        let GlobalParams { supported_urls: old_supported_urls } = account::move_resource_from<GlobalParams>(@verity);
+        
+        // Create new table for GlobalParamsV2
+        let new_supported_urls = table::new<address, vector<SupportedURLMetadata>>();
+        
+        // Migrate data from SimpleMap to Table
+        let keys = simple_map::keys(&old_supported_urls);
+        let values = simple_map::values(&old_supported_urls);
+        let i = 0;
+        let len = vector::length(&keys);
+        while (i < len) {
+            let key = vector::borrow(&keys, i);
+            let value = vector::borrow(&values, i);
+            table::add(&mut new_supported_urls, *key, *value);
+            i = i + 1;
+        };
+        
+        // Move GlobalParamsV2
+        account::move_resource_to(account, GlobalParamsV2 {
+            supported_urls: new_supported_urls,
+        });
+    }
+
     // Compute the cost for an orchestrator request based on payload length
     // Returns Option<u256> - Some(cost) if URL is supported, None otherwise
     #[view]
@@ -74,12 +117,13 @@ module verity::registry {
         payload_length: u64,
         response_length: u64
     ): Option<u256> {
-        let supported_urls = &account::borrow_resource<GlobalParams>(@verity).supported_urls;
+        let global_params = account::borrow_resource<GlobalParamsV2>(@verity);
+        let supported_urls = &global_params.supported_urls;
 
         let url = string_utils::to_lower_case(&url);
         // Is the Orchestrator registered as an Oracle?
-        if (simple_map::contains_key(supported_urls, &orchestrator)) {
-            let orchestrator_urls = simple_map::borrow(supported_urls, &orchestrator);
+        if (table::contains(supported_urls, orchestrator)) {
+            let orchestrator_urls = table::borrow(supported_urls, orchestrator);
 
             let i = 0;
             while (i < vector::length(orchestrator_urls)) {
@@ -115,14 +159,14 @@ module verity::registry {
         cost_per_response_token: u256
     ) {
         let sender = signer::address_of(caller);
-        let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
+        let global_params = account::borrow_mut_resource<GlobalParamsV2>(@verity);
         
         // Initialize orchestrator's URL vector if it doesn't exist
-        if (!simple_map::contains_key(&global_params.supported_urls, &sender)) {
-            simple_map::add(&mut global_params.supported_urls, sender, vector::empty());
+        if (!table::contains(&global_params.supported_urls, sender)) {
+            table::add(&mut global_params.supported_urls, sender, vector::empty());
         };
 
-        let orchestrator_urls = simple_map::borrow_mut(&mut global_params.supported_urls, &sender);
+        let orchestrator_urls = table::borrow_mut(&mut global_params.supported_urls, sender);
         let metadata = SupportedURLMetadata {
             url_prefix,
             base_fee,
@@ -168,10 +212,10 @@ module verity::registry {
         url_prefix: String
     ) {
         let sender = signer::address_of(caller);
-        let global_params = account::borrow_mut_resource<GlobalParams>(@verity);
+        let global_params = account::borrow_mut_resource<GlobalParamsV2>(@verity);
         
-        assert!(simple_map::contains_key(&global_params.supported_urls, &sender), NotOracleError);
-        let orchestrator_urls = simple_map::borrow_mut(&mut global_params.supported_urls, &sender);
+        assert!(table::contains(&global_params.supported_urls, sender), NotOracleError);
+        let orchestrator_urls = table::borrow_mut(&mut global_params.supported_urls, sender);
         
         let i = 0;
         let len = vector::length(orchestrator_urls);
@@ -197,10 +241,10 @@ module verity::registry {
     /// Get all supported URLs and their metadata for an orchestrator
     /// Returns empty vector if orchestrator not found
     public fun get_supported_urls(orchestrator: address): vector<SupportedURLMetadata> {
-        let global_params = account::borrow_resource<GlobalParams>(@verity);
+        let global_params = account::borrow_resource<GlobalParamsV2>(@verity);
         
-        if (simple_map::contains_key(&global_params.supported_urls, &orchestrator)) {
-            *simple_map::borrow(&global_params.supported_urls, &orchestrator)
+        if (table::contains(&global_params.supported_urls, orchestrator)) {
+            *table::borrow(&global_params.supported_urls, orchestrator)
         } else {
             vector::empty()
         }
