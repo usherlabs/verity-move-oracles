@@ -25,6 +25,15 @@ const baseConfig = {
   // Integrations
   xBearerToken: process.env.X_BEARER_TOKEN ?? "",
   openAIToken: process.env.OPEN_AI_TOKEN ?? "",
+  // Add Sui configuration
+  sui: process.env.CHAINS?.includes("SUI")
+    ? {
+        chainId: process.env.SUI_CHAIN_ID as "mainnet" | "testnet" | "devnet",
+        oracleAddress: process.env.SUI_ORACLE_ADDRESS,
+        indexerCron: process.env.SUI_INDEXER_CRON,
+        privateKey: process.env.SUI_PRIVATE_KEY,
+      }
+    : undefined,
 };
 
 interface IEnvVars {
@@ -43,6 +52,12 @@ interface IEnvVars {
   batchSize: number;
   xBearerToken: string;
   openAIToken: string;
+  sui?: {
+    chainId: "mainnet" | "testnet" | "devnet";
+    oracleAddress: string;
+    indexerCron: string;
+    privateKey: string;
+  };
 }
 
 const envVarsSchema = Joi.object({
@@ -98,6 +113,20 @@ const envVarsSchema = Joi.object({
   sentryDSN: Joi.string().allow("", null),
   ecdsaPrivateKey: Joi.string().allow("", null),
   batchSize: Joi.number().default(1000),
+
+  // Add Sui validation
+  sui: Joi.object({
+    chainId: Joi.string().valid("mainnet", "testnet", "devnet").insensitive(),
+    oracleAddress: Joi.string().custom((value, helper) => addressValidator(value, helper)),
+    indexerCron: Joi.string().default("*/5 * * * * *"),
+    privateKey: Joi.string().custom((value, helper) => {
+      return privateKeyValidator(value, helper);
+    }),
+  }).when("chains", {
+    is: Joi.array().items(Joi.string().valid(SupportedChain.SUI)),
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
 });
 
 const { value, error } = envVarsSchema.validate({
@@ -132,4 +161,5 @@ export default {
     privateKey: envVars.aptosPrivateKey,
     noditKey: envVars.aptosNoditKey,
   },
+  sui: envVars.sui,
 };
