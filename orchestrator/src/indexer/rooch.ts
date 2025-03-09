@@ -303,18 +303,20 @@ export default class RoochIndexer extends Indexer {
           moduleName: notify_module[1] ?? "",
         });
         const function_abi = module_abi.functions.find(
-          (func) => func.name === notify_module[2] && func.params.includes("&signer"),
+          (func) => func.name === notify_module[2] && !func.params.includes("&signer"),
         );
-        const tx = new Transaction();
-        tx.callFunction({
-          target: data.notify ?? "",
-          args: function_abi?.params.length === 0 ? [] : [Args.objectId(data.request_id)],
-        });
-        const notification_receipt = await client.signAndExecuteTransaction({
-          transaction: tx,
-          signer: Secp256k1Keypair.fromSecretKey(keeper_key.privateKey),
-        });
-        log.info({ notification_receipt });
+        if (function_abi) {
+          const tx = new Transaction();
+          tx.callFunction({
+            target: data.notify ?? "",
+            args: function_abi?.params?.length === 0 ? [] : [Args.objectId(data.request_id)],
+          });
+          const notification_receipt = await client.signAndExecuteTransaction({
+            transaction: tx,
+            signer: Secp256k1Keypair.fromSecretKey(keeper_key.privateKey),
+          });
+          log.info({ notification_receipt });
+        }
       }
     } catch (err) {
       log.error({ request_id: data.request_id, err: err });
