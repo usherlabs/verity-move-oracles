@@ -151,7 +151,7 @@ rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff
 To check the state of the response object on a local Rooch node, use the following command:
 
 ```bash
-rooch state -a /object/0x7a01ddf194f8a1c19212d56f747294352bf2e5cf23e6e10e64937aa1955704b0
+rooch state -a /object/
 ```
 
 
