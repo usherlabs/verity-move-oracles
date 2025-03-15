@@ -311,6 +311,7 @@ export default class RoochIndexer extends Indexer {
             target: data.notify ?? "",
             args: function_abi?.params?.length === 0 ? [] : [Args.objectId(data.request_id)],
           });
+          tx.setMaxGas(2_0000_0000);
           const notification_receipt = await client.signAndExecuteTransaction({
             transaction: tx,
             signer: Secp256k1Keypair.fromSecretKey(keeper_key.privateKey),
@@ -319,7 +320,11 @@ export default class RoochIndexer extends Indexer {
         }
       }
     } catch (err) {
-      log.error({ request_id: data.request_id, err: err });
+      log.error({
+        request_id: data.request_id,
+        notifier: Secp256k1Keypair.fromSecretKey(keeper_key.privateKey).getRoochAddress().toHexAddress(),
+        err: err,
+      });
     }
     return receipt;
   }
