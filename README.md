@@ -150,7 +150,7 @@ pnpm dev
 - User Endpoint: `https://api.x.com/2/users/` and `https://api.x.com/2/tweets/`
   ```bash
   # Example: Get user followers count
-  rooch move run --function 0x0d6144b074dd19a9ff581abd5bf7815a39222c8b3ac68ce5938c9d9723544e08::example_caller::request_data \
+  rooch move run --function <oracle_address>::example_caller::request_data \
     --sender-account default \
     --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' \
     --args 'string:GET' \
@@ -165,7 +165,7 @@ pnpm dev
 - Chat Completions: `https://api.openai.com/v1/chat/completions`
   ```bash
   # Example: Simple GPT request
-  rooch move run --function 0x0d6144b074dd19a9ff581abd5bf7815a39222c8b3ac68ce5938c9d9723544e08::example_caller::request_data \
+  rooch move run --function <oracle_address>::example_caller::request_data \
     --sender-account default \
     --args 'string:https://api.openai.com/v1/chat/completions' \
     --args 'string:POST' \

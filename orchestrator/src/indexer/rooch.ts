@@ -226,7 +226,7 @@ export default class RoochIndexer extends Indexer {
     });
 
     if (view.vm_status === "Executed" && view.return_values && view.return_values[0].decoded_value !== 0) {
-      log.debug({ message: `Request: ${data.request_id} as already been processed` });
+      log.debug({ message: `isPreviouslyExecuted Request: ${data.request_id} as already been processed` });
       return true;
     }
     return false;
@@ -250,7 +250,7 @@ export default class RoochIndexer extends Indexer {
     });
 
     if (view.vm_status === "Executed" && view.return_values && view.return_values[0].decoded_value !== 0) {
-      log.debug({ message: `Request: ${data.request_id} as already been processed` });
+      log.debug({ message: `sendFulfillment Request: ${data.request_id} as already been processed` });
       return null;
     }
 
@@ -287,27 +287,44 @@ export default class RoochIndexer extends Indexer {
       signer: this.keyPair,
     });
 
+    const notify_module = data.notify?.split("::") ?? [];
+
     log.info({
       address: Secp256k1Keypair.fromSecretKey(keeper_key.privateKey).getRoochAddress().toHexAddress(),
       target: data.notify ?? "",
       oracleAddress: this.oracleAddress,
-      receipt,
+      receipt: receipt.execution_info,
+      notify_module: data.notify?.split("::"),
     });
     try {
       if ((data.notify?.length ?? 0) > 66) {
-        const tx = new Transaction();
-        tx.callFunction({
-          target: data.notify ?? "",
-          args: [],
+        const module_abi = await client.getModuleAbi({
+          moduleAddr: notify_module[0] ?? "",
+          moduleName: notify_module[1] ?? "",
         });
-        const notification_receipt = await client.signAndExecuteTransaction({
-          transaction: tx,
-          signer: Secp256k1Keypair.fromSecretKey(keeper_key.privateKey),
-        });
-        log.info({ notification_receipt });
+        const function_abi = module_abi.functions.find(
+          (func) => func.name === notify_module[2] && !func.params.includes("&signer"),
+        );
+        if (function_abi) {
+          const tx = new Transaction();
+          tx.callFunction({
+            target: data.notify ?? "",
+            args: function_abi?.params?.length === 0 ? [] : [Args.objectId(data.request_id)],
+          });
+          tx.setMaxGas(2_0000_0000);
+          const notification_receipt = await client.signAndExecuteTransaction({
+            transaction: tx,
+            signer: Secp256k1Keypair.fromSecretKey(keeper_key.privateKey),
+          });
+          log.info({ notification_receipt });
+        }
       }
     } catch (err) {
-      log.error({ request_id: data.request_id, err: err });
+      log.error({
+        request_id: data.request_id,
+        notifier: Secp256k1Keypair.fromSecretKey(keeper_key.privateKey).getRoochAddress().toHexAddress(),
+        err: err,
+      });
     }
     return receipt;
   }

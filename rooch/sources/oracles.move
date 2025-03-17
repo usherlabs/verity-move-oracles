@@ -269,6 +269,7 @@ module verity::oracles {
 
     /// Internal function to create a new request
     fun create_request(
+        request_account: address,
         params: HTTPRequest,
         pick: String,
         oracle: address,
@@ -282,7 +283,7 @@ module verity::oracles {
             oracle,
             response_status: 0,
             response: option::none(),
-            request_account: tx_context::sender(),
+            request_account,
             amount,
             notify
         });
@@ -319,8 +320,9 @@ module verity::oracles {
         assert!(sent_coin >= min_amount, NotEnoughGasError);
         let global_param = account::borrow_mut_resource<GlobalParamsV2>(@verity);
         coin_store::deposit(&mut global_param.treasury, payment);
-
+        let request_account = tx_context::sender();
         return create_request(
+            request_account,
             params,
             pick,
             oracle,
@@ -329,15 +331,37 @@ module verity::oracles {
         )
     }
 
-    /// Creates a new oracle request using caller's escrow balance
+    /// Creates a new oracle request using tx sender's escrow balance
     public fun new_request(
         params: HTTPRequest,
         pick: String,
         oracle: address,
         notify: Option<String>,
     ): ObjectID {
-        let sender = tx_context::sender();
-        let account_balance = get_user_balance(sender);
+        let request_account = tx_context::sender();
+        new_request_with_request_account(request_account, params, pick, oracle, notify)
+    }
+
+    /// Creates a new oracle request using caller's escrow balance
+    public fun new_request_by_signer(
+        caller: &signer,
+        params: HTTPRequest,
+        pick: String,
+        oracle: address,
+        notify: Option<String>,
+    ): ObjectID {
+        let request_account = signer::address_of(caller);
+        new_request_with_request_account(request_account, params, pick, oracle, notify)
+    }
+
+    fun new_request_with_request_account(
+        request_account: address,
+        params: HTTPRequest,
+        pick: String,
+        oracle: address,
+        notify: Option<String>,
+    ): ObjectID {
+        let account_balance = get_user_balance(request_account);
         // 65536 could be changed to the max string length allowed on Move
         let option_min_amount = OracleSupport::estimated_cost(oracle, params.url, string::length(&params.body), 65536);
         assert!(option::is_some(&option_min_amount), OracleSupportError);
@@ -345,10 +369,11 @@ module verity::oracles {
 
         assert!(account_balance >= min_amount, NotEnoughGasError);
         let global_params = account::borrow_mut_resource<GlobalParamsV2>(@verity);
-        let balance = table::borrow_mut(&mut global_params.balances, sender);
+        let balance = table::borrow_mut(&mut global_params.balances, request_account);
         *balance = *balance - min_amount;
 
         return create_request(
+            request_account,
             params,
             pick,
             oracle,
