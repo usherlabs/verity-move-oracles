@@ -25,6 +25,7 @@ const baseConfig = {
   // Integrations
   xBearerToken: process.env.X_BEARER_TOKEN ?? "",
   openAIToken: process.env.OPEN_AI_TOKEN ?? "",
+  albyAccessToken: process.env.ALBY_ACCESS_TOKEN ?? "",
 };
 
 interface IEnvVars {
@@ -43,6 +44,7 @@ interface IEnvVars {
   batchSize: number;
   xBearerToken: string;
   openAIToken: string;
+  albyAccessToken: string;
 }
 
 const envVarsSchema = Joi.object({
@@ -93,6 +95,7 @@ const envVarsSchema = Joi.object({
   // Integrations
   xBearerToken: Joi.string().allow("").required(),
   openAIToken: Joi.string().allow("").required(),
+  albyAccessToken: Joi.string().allow("").required(),
 
   // Common
   sentryDSN: Joi.string().allow("", null),
@@ -117,6 +120,7 @@ export default {
   integrations: {
     xBearerToken: envVars.xBearerToken,
     openAIToken: envVars.openAIToken,
+    albyAccessToken: envVars.albyAccessToken,
   },
   rooch: {
     chainId: envVars.roochChainId,
