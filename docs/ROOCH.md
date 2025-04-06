@@ -79,7 +79,7 @@ pnpm prisma:deploy
 **In Development (for SQLite):**
 
 ```bash
-pnpm clean:db
+pnpm clean:db:dev
 pnpm prisma:generate:dev
 pnpm prisma:deploy:dev
 ```
@@ -100,7 +100,7 @@ rooch account export --address <Rooch Address>
 
 
 To connect to the local Rooch node, set `ROOCH_CHAIN_ID` to `"localnet"`.
-Otherwise, connect to testNet by setting `ROOCH_CHAIN_ID` to `"testnet"`, or to TestNet by setting `ROOCH_CHAIN_ID` to `"testnet"`.
+Otherwise, connect to DevNet by setting `ROOCH_CHAIN_ID` to `"devnet"`, to TestNet by setting `ROOCH_CHAIN_ID` to `"testnet"`, or to MainNet by setting `ROOCH_CHAIN_ID` to `"mainnet"`.
 Ensure that `ROOCH_ORACLE_ADDRESS` is set to the address of the deployed module, e.g., `"0x85859e45551846d9ab8651bb0b6f6e1740c9d758cfda05cfc39d49e2a604d783"`.
 
 #### Step 7: Register supported URL
@@ -109,19 +109,19 @@ Additional steps for managing supported orchestrator URL
 - To add URL
 
 ```bash
-rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::registry::add_supported_url --sender-account 0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d --args 'string:https://api.openai.com/v1/chat/completions' --args 'u256:50000' --args 'u64:40' --args 'u256:4000' --args 'u256:5000'
+rooch move run --function <contract_address>::registry::add_supported_url --sender-account <orchestrator_address> --args 'string:https://api.openai.com/v1/chat/completions' --args 'u256:50000' --args 'u64:40' --args 'u256:4000' --args 'u256:5000'
 ```
 
 - to remove URLs
 
 ```bash
-rooch move run --function  0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::registry::remove_supported_url --sender-account <orchestrator_address> --args 'string:https://api.twitter.com/2/users/'
+rooch move run --function  <contract_address>::registry::remove_supported_url --sender-account <orchestrator_address> --args 'string:https://api.openai.com/v1/chat/completions'
 ```
 
-- To view supported URLS
+- To view supported URLs
 
 ```bash
- rooch move view --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::registry::get_supported_urls  --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d'
+ rooch move view --function <contract_address>::registry::get_supported_urls  --args 'address:<orchestrator_address>'
 ```
 
 
