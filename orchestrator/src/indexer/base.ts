@@ -1,6 +1,7 @@
 import { log } from "@/logger";
 import { type ProcessedRequestAdded, RequestStatus } from "@/types";
 
+import { instance as albyInstance } from "@/integrations/alby";
 import { instance as openAIInstance } from "@/integrations/openAI";
 import { instance as xTwitterInstance } from "@/integrations/xtwitter";
 
@@ -49,6 +50,9 @@ export abstract class Indexer {
     }
     if (openAIInstance.isApprovedPath(url)) {
       return openAIInstance;
+    }
+    if (albyInstance.isApprovedPath(url)) {
+      return albyInstance;
     }
     return null;
   }

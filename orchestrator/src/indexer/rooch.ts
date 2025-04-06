@@ -1,4 +1,5 @@
 import env from "@/env";
+import { instance as albyInstance } from "@/integrations/alby";
 import { instance as xTwitterInstance } from "@/integrations/xtwitter";
 import { log } from "@/logger";
 import type { IEvent, IRequestAdded, JsonRpcResponse, ProcessedRequestAdded, RoochNetwork } from "@/types";
@@ -115,6 +116,7 @@ export default class RoochIndexer extends Indexer {
     for (let i = 0; i < skippedRequests.length; i++) {
       try {
         await new Promise((resolve) => setTimeout(resolve, xTwitterInstance.getRequestRate));
+        await new Promise((resolve) => setTimeout(resolve, albyInstance.getRequestRate));
         const event = skippedRequests[i];
         const data = await this.processRequestAddedEvent(event);
         if (data) {

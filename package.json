@@ -7,7 +7,14 @@
     "node": ">=18"
   },
   "type": "module",
-  "keywords": ["web3", "crypto", "blockchain", "move", "verity", "smart-contracts"],
+  "keywords": [
+    "web3",
+    "crypto",
+    "blockchain",
+    "move",
+    "verity",
+    "smart-contracts"
+  ],
   "author": "Ryan Soury <labs@usher.so>",
   "license": "LGPL-2.1",
   "bugs": {
@@ -21,14 +28,18 @@
     "lint": "biome check orchestrator/src/",
     "lint:fix": "biome check orchestrator/src/ --fix",
     "clean": "del dist",
-    "clean:db": "del ./orchestrator/prisma/.db*",
+    "clean:db": "del ./orchestrator/prisma/*.db*",
+    "clean:db:dev": "del ./orchestrator/prisma-dev/*.db*",
     "prepare": "husky",
     "format": "biome format orchestrator/src/ --fix",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org usherlabs --project verity-move-oracles ./dist && sentry-cli sourcemaps upload --org usherlabs --project verity-move-oracles ./dist",
     "test": "jest --runInBand ",
     "prisma:generate": "prisma generate --schema=./orchestrator/prisma/schema.prisma",
+    "prisma:generate:dev": "prisma generate --schema=./orchestrator/prisma-dev/schema.prisma",
     "prisma:deploy": "prisma migrate deploy --schema=./orchestrator/prisma/schema.prisma",
-    "prisma:studio": "prisma studio --schema=./orchestrator/prisma/schema.prisma"
+    "prisma:deploy:dev": "prisma migrate deploy --schema=./orchestrator/prisma-dev/schema.prisma",
+    "prisma:studio": "prisma studio --schema=./orchestrator/prisma/schema.prisma",
+    "prisma:studio:dev": "prisma studio --schema=./orchestrator/prisma-dev/schema.prisma"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.8.3",
@@ -65,13 +76,17 @@
     "tslog": "^4.9.3"
   },
   "lint-staged": {
-    "*.{js,ts,cjs,mjs,d.cts,d.mts,json,jsonc}": ["biome check --apply --no-errors-on-unmatched"]
+    "*.{js,ts,cjs,mjs,d.cts,d.mts,json,jsonc}": [
+      "biome check --apply --no-errors-on-unmatched"
+    ]
   },
   "prisma": {
     "schema": "orchestrator/prisma/schema.prisma"
   },
   "tsup": {
-    "entry": ["./orchestrator/src"],
+    "entry": [
+      "./orchestrator/src"
+    ],
     "splitting": false,
     "sourcemap": true,
     "clean": true
