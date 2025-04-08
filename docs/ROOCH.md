@@ -13,13 +13,21 @@ Before running the script, ensure you have the following prerequisites installed
 
 ### Step-by-Step Instructions
 
-#### Step 1: Create a Roach Account
+#### Step 1: Create a Rooch Account
 
-First, you need to create a Roach account. This account will be used throughout the setup process.
+First, you need to have `rooch` binary in hand. The `rooch` binary can be downloaded from the [Rooch GitHub repo](https://github.com/rooch-network/rooch). Use the `rooch` binary to create a Rooch account. This account will be used throughout the setup process.
+
+```bash
+rooch init
+```
+
+or
 
 ```bash
 rooch account create
 ```
+
+if there already exists an account.
 
 #### Step 2: Clear and Start Local Network
 
@@ -32,12 +40,11 @@ rooch server start
 
 #### Step 3: Deploy Contracts
 
-Navigate to the `rooch` directory, build the contracts for development, publish them with named addresses and update `.env` `ROOCH_ORACLE_ADDRESS` with deployed Address
+Navigate to this repo's [rooch](../rooch) directory, build the contracts for development, and publish them with named addresses and update `.env` `ROOCH_ORACLE_ADDRESS` with deployed Address
 
 ```bash
 cd rooch
-rooch move build --dev
-rooch move publish --named-addresses verity=default --sender default
+rooch move publish --named-addresses verity=default,verity_test_foreign_module=default --sender default
 cd ..
 ```
 
@@ -82,19 +89,18 @@ pnpm prisma:deploy:dev
 Copy the example environment file to create your own `.env` file:
 
 ```bash
-cp .env.example .env
+cp .env.sample .env
 ```
 
 Export the Rooch Private Key:
 
 ```bash
 rooch account export --address <Rooch Address>
-
 ```
 
 
-To connect to the local Rooch node, set `ROOCH_CHAIN_ID` to `"localnet"`.  
-Otherwise, connect to testNet by setting `ROOCH_CHAIN_ID` to `"testnet"`, or to TestNet by setting `ROOCH_CHAIN_ID` to `"testnet"`.  
+To connect to the local Rooch node, set `ROOCH_CHAIN_ID` to `"localnet"`.
+Otherwise, connect to testNet by setting `ROOCH_CHAIN_ID` to `"testnet"`, or to TestNet by setting `ROOCH_CHAIN_ID` to `"testnet"`.
 Ensure that `ROOCH_ORACLE_ADDRESS` is set to the address of the deployed module, e.g., `"0x85859e45551846d9ab8651bb0b6f6e1740c9d758cfda05cfc39d49e2a604d783"`.
 
 #### Step 7: Register supported URL
@@ -103,7 +109,7 @@ Additional steps for managing supported orchestrator URL
 - To add URL
 
 ```bash
-rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::registry::add_supported_url --sender-account 0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d --args 'string:https://api.openai.com/v1/chat/completions' --args 'u256:50000' --args 'u64:40' --args 'u256:4000' --args 'u256:5000' 
+rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::registry::add_supported_url --sender-account 0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d --args 'string:https://api.openai.com/v1/chat/completions' --args 'u256:50000' --args 'u64:40' --args 'u256:4000' --args 'u256:5000'
 ```
 
 - to remove URLs
@@ -115,7 +121,7 @@ rooch move run --function  0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858f
 - To view supported URLS
 
 ```bash
- rooch move view --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::registry::get_supported_urls  --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' 
+ rooch move view --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::registry::get_supported_urls  --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d'
 ```
 
 
@@ -144,7 +150,7 @@ Here's an example of requesting the Twitter Followers Count on a Local Rooch Nod
 ```bash
 rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::example_caller::request_data --sender-account default --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' --args 'u256:50000'
 ```
-or 
+or
 ```bash
 rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::example_caller::request_data --sender-account default --args 'string:https://api.openai.com/v1/chat/completions' --args 'string:POST' --args 'string:{}' --args 'string:{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Say this is a test!"}],"temperature": 0.7}' --args 'string:.choices[].message.content' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d' --args 'u256:50000000'
 ```
@@ -155,7 +161,7 @@ rooch state -a /object/0x7a01ddf194f8a1c19212d56f747294352bf2e5cf23e6e10e64937aa
 ```
 
 
-Additionally, 
+Additionally,
 For notification calls you can allocated an portion form escrow for notification per fulfilment Request(Recommended 1Rgas for the first fulfilment).
 ```bash
 rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::oracles::update_notification_gas_allocation --sender-account default  --args 'address:0x27e46e033da11c4d1f986081877e80cefb2b29dec1c559c97c3ccf12e910aba7' --args 'string:example_caller::receive_data' --args 'u256:10000000'
@@ -163,20 +169,20 @@ rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff
 
 #### Step 10: Manage Escrow balance
 
-- To view balance 
+- To view balance
 
 ```bash
-rooch move view --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::oracles::get_user_balance  --args 'address:<your_address>' 
+rooch move view --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::oracles::get_user_balance  --args 'address:<your_address>'
 ```
 
 - To withdraw Balance
 ```bash
-rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::oracles::withdraw_from_escrow  --args 'u256:<amount>' 
+rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::oracles::withdraw_from_escrow  --args 'u256:<amount>'
 ```
 
-- To Deposit 
+- To Deposit
 ```bash
-rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::oracles::deposit_to_escrow  --args 'u256:<amount>' 
+rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::oracles::deposit_to_escrow  --args 'u256:<amount>'
 ```
 
 To confirm the `Request` Object State, use the Object ID generated from the initial transaction to query the state of the response object.
@@ -190,7 +196,7 @@ An example of requesting the Twitter Followers Count on a Rooch Testnet:
 rooch move run --function 0xf1290fb0e7e1de7e92e616209fb628970232e85c4c1a264858ff35092e1be231::example_caller::request_data --sender-account default --args 'string:https://api.x.com/2/users/by/username/elonmusk?user.fields=public_metrics' --args 'string:GET' --args 'string:{}' --args 'string:{}' --args 'string:.data.public_metrics.followers_count' --args 'address:0x694cbe655b126e9e6a997e86aaab39e538abf30a8c78669ce23a98740b47b65d'
 ```
 
-To check the state of the response object on testnet, devnet, or mainnet, 
+To check the state of the response object on testnet, devnet, or mainnet,
 
 1. Switch to the relevant network using `rooch env switch --alias <NETWORK_ALIAS>`
 2. Use the following command:
