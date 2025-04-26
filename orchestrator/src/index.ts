@@ -3,6 +3,7 @@ import "dotenv/config";
 import env from "./env";
 import AptosIndexer from "./indexer/aptos";
 import RoochIndexer from "./indexer/rooch";
+import SuiIndexer from "./indexer/sui";
 import { log } from "./logger";
 
 (async () => {
@@ -44,5 +45,39 @@ import { log } from "./logger";
     );
   } else {
     log.info(`Skipping Aptos Indexer initialization...`);
+  }
+
+  // Add debug logs before the Sui check
+  console.log("Debug Sui values:", {
+    privateKey: !!env.sui?.privateKey, // just log if it exists
+    chainId: env.sui?.chainId,
+    oracleAddress: env.sui?.oracleAddress,
+    chains: env.chains,
+    includesSUI: env.chains.includes("SUI"),
+  });
+
+  if (env.sui?.privateKey && env.sui.chainId && env.sui.oracleAddress && env.chains.includes("SUI")) {
+    const suiIndexer = new SuiIndexer(env.sui.oracleAddress, env.sui.chainId, env.sui.privateKey);
+
+    // Add immediate execution for testing
+    log.info("Running Sui indexer immediately...");
+    await suiIndexer.run();
+
+    new CronJob(
+      env.sui.indexerCron,
+      async () => {
+        log.info("Running Sui indexer from cron...");
+        await suiIndexer.run();
+      },
+      null,
+      true,
+    );
+  } else {
+    log.info(`Skipping Sui Indexer initialization...`, {
+      hasPrivateKey: !!env.sui?.privateKey,
+      chainId: env.sui?.chainId,
+      oracleAddress: env.sui?.oracleAddress,
+      includesSUI: env.chains.includes("SUI"),
+    });
   }
 })();

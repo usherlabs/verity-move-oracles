@@ -6,18 +6,23 @@ export type RoochEnv = {
 };
 export const ALLOWED_HOST = ["x.com", "api.x.com", "twitter.com", "api.twitter.com"];
 
+// Network types
 export const RoochNetworkList = ["testnet", "devnet", "localnet", "pre-mainnet"] as const;
-
 export const AptosNetworkList = ["testnet", "mainnet"] as const;
+export const SuiNetworkList = ["localnet", "devnet", "testnet", "mainnet"] as const;
 
-export const ChainList = ["ROOCH", "APTOS"] as const;
+// Chain types
+export const ChainList = ["ROOCH", "APTOS", "SUI"] as const;
 
+// Network type definitions
 export type RoochNetwork = (typeof RoochNetworkList)[number];
-
 export type AptosNetwork = (typeof AptosNetworkList)[number];
+export type SuiNetwork = (typeof SuiNetworkList)[number];
 
+// Chain type definition
 export type SupportedChain = (typeof ChainList)[number];
 
+// Chain enum (for consistency)
 export const SupportedChain = ChainList.reduce(
   (acc, value) => {
     acc[value] = value;
@@ -215,4 +220,12 @@ export interface AptosRequestEvent {
   };
   pick: string;
   request_id: string;
+}
+
+export interface SuiRequestEvent {
+  params: any;
+  oracle: string;
+  pick: string;
+  request_id: string;
+  notify?: string;
 }
