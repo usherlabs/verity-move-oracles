@@ -106,6 +106,7 @@ describe(".env Check", () => {
           const { default: envVars } = await import("../env");
           expect(envVars).toBeNull();
         } catch (err: any) {
+          expect(err.message).toBeInstanceOf("");
           expect(err).toBeInstanceOf(Error);
         }
       } else {

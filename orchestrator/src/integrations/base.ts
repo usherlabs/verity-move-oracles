@@ -4,7 +4,6 @@ import { isValidJson } from "@/util";
 import axios, { type AxiosResponse } from "axios";
 import jsonata from "jsonata";
 import prismaClient from "prisma";
-import APIBearerIntegration from "./xtwitter";
 export abstract class BasicBearerAPIHandler {
   protected last_executed = 0;
 
@@ -129,8 +128,14 @@ export abstract class BasicBearerAPIHandler {
   }
 }
 
+export default class APIBaseIntegration extends BasicBearerAPIHandler {
+  validatePayload(path: string): boolean {
+    return true;
+  }
+}
+
 export class DynamicInstanceManager {
-  private instances: Map<string, APIBearerIntegration> = new Map();
+  private instances: Map<string, APIBaseIntegration> = new Map();
   private isLoading = true;
 
   constructor() {
@@ -147,21 +152,21 @@ export class DynamicInstanceManager {
     for (const url of supportedUrls) {
       this.instances.set(
         url.domain,
-        new APIBearerIntegration(url.authKey, [url.domain], url.supported_path, Number(url.requestRate)),
+        new APIBaseIntegration(url.authKey, [url.domain], url.supported_path, Number(url.requestRate)),
       );
     }
 
     this.isLoading = false;
   }
 
-  public getInstance(domain: string): APIBearerIntegration | undefined {
+  public getInstance(domain: string): APIBaseIntegration | undefined {
     if (this.isLoading) {
       throw new Error("DynamicInstanceManager is still loading. Try again later.");
     }
     return this.instances.get(domain);
   }
 
-  public getAllInstances(): Map<string, APIBearerIntegration> {
+  public getAllInstances(): Map<string, APIBaseIntegration> {
     if (this.isLoading) {
       throw new Error("DynamicInstanceManager is still loading. Try again later.");
     }

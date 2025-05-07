@@ -95,6 +95,7 @@ const envVarsSchema = Joi.object({
   // Integrations
   xBearerToken: Joi.string().allow("").required(),
   openAIToken: Joi.string().allow("").required(),
+  azureToken: Joi.string().allow("").required(),
 
   // Common
   sentryDSN: Joi.string().allow("", null),
