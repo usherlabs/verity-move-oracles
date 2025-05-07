@@ -1,5 +1,5 @@
 import env from "@/env";
-import APIBaseIntegration from "./base";
+import APIBaseIntegration from "@/integrations/base";
 
 export const xTwitterInstance = new APIBaseIntegration(
   env.integrations.xBearerToken,
