@@ -1,9 +1,16 @@
 import env from "@/env";
-import { instance as xTwitterInstance } from "@/integrations/xtwitter";
+import { xTwitterInstance } from "@/integrations/xtwitter";
 import { log } from "@/logger";
 import type { IEvent, IRequestAdded, JsonRpcResponse, ProcessedRequestAdded, RoochNetwork } from "@/types";
 import { decodeNotifyValueFull } from "@/util";
-import { Args, RoochClient, Secp256k1Keypair, Transaction, getRoochNodeUrl } from "@roochnetwork/rooch-sdk";
+import {
+  Args,
+  RoochClient,
+  RoochWebSocketTransport,
+  Secp256k1Keypair,
+  Transaction,
+  getRoochNodeUrl,
+} from "@roochnetwork/rooch-sdk";
 import axios from "axios";
 import prismaClient from "../../prisma";
 import { Indexer } from "./base";
@@ -35,7 +42,20 @@ export default class RoochIndexer extends Indexer {
    */
   async sendUnfulfilledRequests() {
     // Initialize the Rooch client with the current node URL
-    const client = new RoochClient({ url: this.getRoochNodeUrl() });
+    // const _client = new RoochClient({ url: this.getRoochNodeUrl() });
+
+    const wsTransport = new RoochWebSocketTransport({
+      url: getRoochNodeUrl(this.chainId),
+      reconnectDelay: 1000, // Delay between reconnection attempts (default: 1000ms)
+      maxReconnectAttempts: 5, // Maximum number of reconnection attempts (default: 5)
+      requestTimeout: 30000, // Request timeout (default: 30000ms)
+      connectionReadyTimeout: 5000, // Connection ready timeout (default: 5000ms)
+    });
+
+    // Create client with WebSocket transport
+    const client = new RoochClient({
+      transport: wsTransport,
+    });
 
     // Initialize cursor object for pagination
     const cursor = {
@@ -135,7 +155,7 @@ export default class RoochIndexer extends Indexer {
   }
 
   getRoochNodeUrl() {
-    return this.chainId === "pre-mainnet" ? "https://main-seed.rooch.network" : getRoochNodeUrl(this.chainId);
+    return getRoochNodeUrl(this.chainId);
   }
 
   /**

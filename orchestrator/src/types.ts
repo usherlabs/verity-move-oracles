@@ -6,7 +6,7 @@ export type RoochEnv = {
 };
 export const ALLOWED_HOST = ["x.com", "api.x.com", "twitter.com", "api.twitter.com"];
 
-export const RoochNetworkList = ["testnet", "devnet", "localnet", "pre-mainnet"] as const;
+export const RoochNetworkList = ["testnet", "devnet", "localnet", "mainnet"] as const;
 
 export const AptosNetworkList = ["testnet", "mainnet"] as const;
 

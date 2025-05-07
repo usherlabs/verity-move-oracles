@@ -10,8 +10,6 @@ import { log } from "./logger";
   // Start cron job to check for new events from Rooch Oracles
 
   if (env.rooch.privateKey && env.rooch.chainId.length > 0 && env.rooch.oracleAddress && env.chains.includes("ROOCH")) {
-    // https://www.npmjs.com/package/cron#cronjob-class
-
     env.rooch.chainId.map((chain) => {
       const rooch = new RoochIndexer(env.rooch.privateKey, chain, env.rooch.oracleAddress);
       let running = false;

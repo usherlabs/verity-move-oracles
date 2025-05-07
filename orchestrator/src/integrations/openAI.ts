@@ -12,7 +12,7 @@ const chatSchema = Joi.object({
     }).required(),
   ),
 });
-export default class OpenAIIntegration extends BasicBearerAPIHandler {
+export default class AIIntegration extends BasicBearerAPIHandler {
   validatePayload(path: string, payload: string): boolean {
     try {
       if (this.supported_paths.includes(path)) {
@@ -37,9 +37,16 @@ export default class OpenAIIntegration extends BasicBearerAPIHandler {
   }
 }
 
-export const instance = new OpenAIIntegration(
+export const openAIInstance = new AIIntegration(
   env.integrations.openAIToken,
   ["api.openai.com"],
+  ["/v1/chat/completions"],
+  60 * 1000,
+);
+
+export const azureInstance = new AIIntegration(
+  env.integrations.azureToken,
+  ["ai-oki6300ai905488739395.openai.azure.com"],
   ["/v1/chat/completions"],
   60 * 1000,
 );
