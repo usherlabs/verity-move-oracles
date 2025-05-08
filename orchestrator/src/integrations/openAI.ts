@@ -4,7 +4,7 @@ import Joi from "joi";
 import { BasicBearerAPIHandler } from "./base";
 
 const chatSchema = Joi.object({
-  model: Joi.string().required(),
+  model: Joi.string().optional().allow(null, ""),
   messages: Joi.array().items(
     Joi.object({
       role: Joi.string().required(),
@@ -16,18 +16,22 @@ export default class AIIntegration extends BasicBearerAPIHandler {
   validatePayload(path: string, payload: string): boolean {
     try {
       if (this.supported_paths.includes(path)) {
-        if (path === "/v1/chat/completions") {
-          const { error, value } = chatSchema.validate(JSON.parse(payload), {
-            allowUnknown: true,
-          });
-          if (error) {
-            log.error({ value, error });
-            return false;
-          } else {
-            if (value.model === "gpt-4o") {
-              return true;
-            }
-          }
+        const { error, value } = chatSchema.validate(JSON.parse(payload), {
+          allowUnknown: true,
+        });
+        if (error) {
+          log.error({ value, error });
+          return false;
+        }
+
+        // AZURE
+        if (this.supported_host.includes("ai-oki6300ai905488739395.openai.azure.com")) {
+          return true;
+        }
+
+        // OPENAI CHECK AND MODEL RESTRICTIONS
+        if (path === "/v1/chat/completions" && value.model === "gpt-4o") {
+          return true;
         }
       }
       return false;
@@ -47,6 +51,6 @@ export const openAIInstance = new AIIntegration(
 export const azureInstance = new AIIntegration(
   env.integrations.azureToken,
   ["ai-oki6300ai905488739395.openai.azure.com"],
-  ["/v1/chat/completions"],
+  ["/openai/deployments/"],
   60 * 1000,
 );
