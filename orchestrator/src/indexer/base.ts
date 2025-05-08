@@ -100,7 +100,7 @@ export abstract class Indexer {
       if (handler) {
         return handler.submitRequest(data);
       }
-      return { status: 406, message: "URL Not supported" };
+      return { status: 406, message: "URL NOT supported" };
     } catch {
       return { status: 406, message: "Invalid URL" };
     }
