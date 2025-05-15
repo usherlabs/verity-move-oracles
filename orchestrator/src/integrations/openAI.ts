@@ -4,7 +4,7 @@ import Joi from "joi";
 import { BasicBearerAPIHandler } from "./base";
 
 const chatSchema = Joi.object({
-  model: Joi.string().required(),
+  model: Joi.string().optional().allow(null, ""),
   messages: Joi.array().items(
     Joi.object({
       role: Joi.string().required(),
@@ -12,34 +12,44 @@ const chatSchema = Joi.object({
     }).required(),
   ),
 });
-export default class OpenAIIntegration extends BasicBearerAPIHandler {
+export default class AIIntegration extends BasicBearerAPIHandler {
   validatePayload(path: string, payload: string): boolean {
     try {
-      if (this.supported_paths.includes(path)) {
-        if (path === "/v1/chat/completions") {
-          const { error, value } = chatSchema.validate(JSON.parse(payload), {
-            allowUnknown: true,
-          });
-          if (error) {
-            log.error({ value, error });
-            return false;
-          } else {
-            if (value.model === "gpt-4o") {
-              return true;
-            }
-          }
-        }
+      const { error, value } = chatSchema.validate(JSON.parse(payload), {
+        allowUnknown: true,
+      });
+      if (error) {
+        log.error({ value, error });
+        return false;
+      }
+
+      // AZURE
+      if (this.hosts.includes("ai-oki6300ai905488739395.openai.azure.com")) {
+        return true;
+      }
+
+      // OPENAI CHECK AND MODEL RESTRICTIONS
+      if (path === "/v1/chat/completions" && value.model === "gpt-4o") {
+        return true;
       }
       return false;
-    } catch {
+    } catch (e) {
+      log.error({ validatePayloadError: e });
       return false;
     }
   }
 }
 
-export const instance = new OpenAIIntegration(
+export const openAIInstance = new AIIntegration(
   env.integrations.openAIToken,
   ["api.openai.com"],
   ["/v1/chat/completions"],
+  60 * 1000,
+);
+
+export const azureInstance = new AIIntegration(
+  env.integrations.azureToken,
+  ["ai-oki6300ai905488739395.openai.azure.com"],
+  ["/openai/deployments/"],
   60 * 1000,
 );

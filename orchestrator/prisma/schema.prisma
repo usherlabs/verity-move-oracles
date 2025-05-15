@@ -10,34 +10,43 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Events{
-  id                        String @id @default(cuid())
-  eventHandleId             String 
-  eventSeq                  BigInt
-  eventType                 String
-  eventData                 String
-  eventIndex                String
-  decoded_event_data        String  //JSON String
-  chain                     String   @default("ROOCH-testnet")
+model Events {
+  id                 String @id @default(cuid())
+  eventHandleId      String
+  eventSeq           BigInt
+  eventType          String
+  eventData          String
+  eventIndex         String
+  decoded_event_data String //JSON String
+  chain              String @default("ROOCH-testnet")
 
-  status                    Int
-  retries                   Int
-  response                  String?
-  indexedAt                 DateTime  @default(now())
-  updateAt                  DateTime  @updatedAt
+  status    Int
+  retries   Int
+  response  String?
+  indexedAt DateTime @default(now())
+  updateAt  DateTime @updatedAt
 
-  @@index([eventHandleId, eventSeq,chain])
+  @@index([eventHandleId, eventSeq, chain])
 }
 
-model Keeper{
-  id                        String    @id @default(cuid())
-  chain                     String    @default("ROOCH-testnet")
-  module                    String 
-  privateKey                String
+model Keeper {
+  id         String @id @default(cuid())
+  chain      String @default("ROOCH-testnet")
+  module     String
+  privateKey String
 
-  createdAt                 DateTime  @default(now())
-  updateAt                  DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updateAt  DateTime @updatedAt
 
   @@unique([chain, module])
+}
 
+model SupportedUrl {
+  domain         String    @id
+  supported_path String[]
+  authType       String
+  authKey        String   // BEARER, OAUTH1.0,  OAUTH2.0
+  requestRate    BigInt                   
+
+  @@index([authKey])
 }

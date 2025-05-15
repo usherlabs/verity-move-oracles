@@ -1,10 +1,10 @@
 import { log } from "@/logger";
 import { type ProcessedRequestAdded, RequestStatus } from "@/types";
 
-import { instance as openAIInstance } from "@/integrations/openAI";
-import { instance as xTwitterInstance } from "@/integrations/xtwitter";
+import { azureInstance, openAIInstance } from "@/integrations/openAI";
+import { xTwitterInstance } from "@/integrations/xtwitter";
 
-import type { BasicBearerAPIHandler } from "@/integrations/base";
+import { type BasicBearerAPIHandler, dynamicInstanceManager } from "@/integrations/base";
 import prismaClient from "../../prisma";
 
 // Abstract base class
@@ -50,6 +50,12 @@ export abstract class Indexer {
     if (openAIInstance.isApprovedPath(url)) {
       return openAIInstance;
     }
+    if (azureInstance.isApprovedPath(url)) {
+      return azureInstance;
+    }
+    if (!dynamicInstanceManager.loading) {
+      return dynamicInstanceManager.getInstance(url.host) || null;
+    }
     return null;
   }
 
@@ -94,7 +100,7 @@ export abstract class Indexer {
       if (handler) {
         return handler.submitRequest(data);
       }
-      return { status: 406, message: "URL Not supported" };
+      return { status: 406, message: "URL NOT supported" };
     } catch {
       return { status: 406, message: "Invalid URL" };
     }

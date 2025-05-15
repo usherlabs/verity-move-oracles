@@ -32,7 +32,7 @@ jobs:
 
       - name: Download ROOCH and APTOS
         run: |
-          wget https://github.com/rooch-network/rooch/releases/latest/download/rooch-ubuntu-22.04.zip
+          wget  https://github.com/rooch-network/rooch/releases/latest/download/rooch-ubuntu-22.04.zip
           wget -qO- "https://aptos.dev/scripts/install_cli.py" | python3
           echo "Download completed"
       

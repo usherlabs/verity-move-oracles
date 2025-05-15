@@ -1,15 +1,23 @@
 import env from "@/env";
-import { instance as xTwitterInstance } from "@/integrations/xtwitter";
+import { xTwitterInstance } from "@/integrations/xtwitter";
 import { log } from "@/logger";
 import type { IEvent, IRequestAdded, JsonRpcResponse, ProcessedRequestAdded, RoochNetwork } from "@/types";
 import { decodeNotifyValueFull } from "@/util";
-import { Args, RoochClient, Secp256k1Keypair, Transaction, getRoochNodeUrl } from "@roochnetwork/rooch-sdk";
+import {
+  Args,
+  RoochClient,
+  RoochWebSocketTransport,
+  Secp256k1Keypair,
+  Transaction,
+  getRoochNodeUrl,
+} from "@roochnetwork/rooch-sdk";
 import axios from "axios";
 import prismaClient from "../../prisma";
 import { Indexer } from "./base";
 
 export default class RoochIndexer extends Indexer {
   private keyPair: Secp256k1Keypair;
+  private client: RoochClient;
 
   constructor(
     private privateKey: string,
@@ -18,6 +26,18 @@ export default class RoochIndexer extends Indexer {
   ) {
     super(oracleAddress, Secp256k1Keypair.fromSecretKey(privateKey).getRoochAddress().toHexAddress());
     this.keyPair = Secp256k1Keypair.fromSecretKey(this.privateKey);
+    const wsTransport = new RoochWebSocketTransport({
+      url: getRoochNodeUrl(this.chainId),
+      reconnectDelay: 1000, // Delay between reconnection attempts (default: 1000ms)
+      maxReconnectAttempts: 5, // Maximum number of reconnection attempts (default: 5)
+      requestTimeout: 30000, // Request timeout (default: 30000ms)
+      connectionReadyTimeout: 5000, // Connection ready timeout (default: 5000ms)
+    });
+
+    // Create client with WebSocket transport
+    this.client = new RoochClient({
+      transport: wsTransport,
+    });
     log.info(`Rooch Indexer initialized`);
     log.info(`Chain ID: ${this.getChainId()} \n\t\tOrchestrator Oracle Node Address: ${this.orchestrator}`);
   }
@@ -35,7 +55,7 @@ export default class RoochIndexer extends Indexer {
    */
   async sendUnfulfilledRequests() {
     // Initialize the Rooch client with the current node URL
-    const client = new RoochClient({ url: this.getRoochNodeUrl() });
+    // const _client = new RoochClient({ url: this.getRoochNodeUrl() });
 
     // Initialize cursor object for pagination
     const cursor = {
@@ -53,7 +73,7 @@ export default class RoochIndexer extends Indexer {
     while (cursor.isNextPage) {
       try {
         // Query for object states with pagination
-        const query = await client.queryObjectStates({
+        const query = await this.client.queryObjectStates({
           filter: {
             object_type: `${this.oracleAddress}::oracles::Request`,
           },
@@ -135,7 +155,7 @@ export default class RoochIndexer extends Indexer {
   }
 
   getRoochNodeUrl() {
-    return this.chainId === "pre-mainnet" ? "https://main-seed.rooch.network" : getRoochNodeUrl(this.chainId);
+    return getRoochNodeUrl(this.chainId);
   }
 
   /**
@@ -216,11 +236,7 @@ export default class RoochIndexer extends Indexer {
   }
 
   async isPreviouslyExecuted(data: ProcessedRequestAdded<any>) {
-    const client = new RoochClient({
-      url: this.getRoochNodeUrl(),
-    });
-
-    const view = await client.executeViewFunction({
+    const view = await this.client.executeViewFunction({
       target: `${this.oracleAddress}::oracles::get_response_status`,
       args: [Args.objectId(data.request_id)],
     });
@@ -240,11 +256,7 @@ export default class RoochIndexer extends Indexer {
    * @returns {Promise<any>} - The receipt of the transaction.
    */
   async sendFulfillment(data: ProcessedRequestAdded<any>, status: number, result: string) {
-    const client = new RoochClient({
-      url: this.getRoochNodeUrl(),
-    });
-
-    const view = await client.executeViewFunction({
+    const view = await this.client.executeViewFunction({
       target: `${this.oracleAddress}::oracles::get_response_status`,
       args: [Args.objectId(data.request_id)],
     });
@@ -282,7 +294,7 @@ export default class RoochIndexer extends Indexer {
 
     tx.setMaxGas(1000000000);
 
-    const receipt = await client.signAndExecuteTransaction({
+    const receipt = await this.client.signAndExecuteTransaction({
       transaction: tx,
       signer: this.keyPair,
     });
@@ -298,7 +310,7 @@ export default class RoochIndexer extends Indexer {
     });
     try {
       if ((data.notify?.length ?? 0) > 66) {
-        const module_abi = await client.getModuleAbi({
+        const module_abi = await this.client.getModuleAbi({
           moduleAddr: notify_module[0] ?? "",
           moduleName: notify_module[1] ?? "",
         });
@@ -312,7 +324,7 @@ export default class RoochIndexer extends Indexer {
             args: function_abi?.params?.length === 0 ? [] : [Args.objectId(data.request_id)],
           });
           tx.setMaxGas(2_0000_0000);
-          const notification_receipt = await client.signAndExecuteTransaction({
+          const notification_receipt = await this.client.signAndExecuteTransaction({
             transaction: tx,
             signer: Secp256k1Keypair.fromSecretKey(keeper_key.privateKey),
           });

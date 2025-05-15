@@ -8,7 +8,7 @@ const baseConfig = {
   // Rooch
   roochChainId: (process.env.ROOCH_CHAIN_ID
     ? process.env.ROOCH_CHAIN_ID.split(",")
-    : ["testnet", "pre-mainnet"]) as RoochNetwork[],
+    : ["testnet", "mainnet"]) as RoochNetwork[],
   roochPrivateKey: process.env.ROOCH_PRIVATE_KEY ?? "",
   roochOracleAddress: process.env.ROOCH_ORACLE_ADDRESS ?? "",
   roochIndexerCron: process.env.ROOCH_INDEXER_CRON,
@@ -25,6 +25,7 @@ const baseConfig = {
   // Integrations
   xBearerToken: process.env.X_BEARER_TOKEN ?? "",
   openAIToken: process.env.OPEN_AI_TOKEN ?? "",
+  azureToken: process.env.AZURE_TOKEN ?? "",
 };
 
 interface IEnvVars {
@@ -43,6 +44,7 @@ interface IEnvVars {
   batchSize: number;
   xBearerToken: string;
   openAIToken: string;
+  azureToken: string;
 }
 
 const envVarsSchema = Joi.object({
@@ -93,6 +95,7 @@ const envVarsSchema = Joi.object({
   // Integrations
   xBearerToken: Joi.string().allow("").required(),
   openAIToken: Joi.string().allow("").required(),
+  azureToken: Joi.string().allow("").required(),
 
   // Common
   sentryDSN: Joi.string().allow("", null),
@@ -117,6 +120,7 @@ export default {
   integrations: {
     xBearerToken: envVars.xBearerToken,
     openAIToken: envVars.openAIToken,
+    azureToken: envVars.azureToken,
   },
   rooch: {
     chainId: envVars.roochChainId,

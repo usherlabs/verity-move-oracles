@@ -171,7 +171,7 @@ pnpm dev
     --args 'string:POST' \
     --args 'string:{}' \
     --args 'string:{
-      "model": "gpt-4",
+      "model": "gpt-4o",
       "messages": [{"role": "user", "content": "Say this is a test!"}],
       "temperature": 0.7
     }' \
