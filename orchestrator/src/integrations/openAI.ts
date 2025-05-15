@@ -24,7 +24,7 @@ export default class AIIntegration extends BasicBearerAPIHandler {
       }
 
       // AZURE
-      if (this.hosts.includes("ai-oki6300ai905488739395.openai.azure.com")) {
+      if (this.hosts.some((s) => s.includes("openai.azure.com"))) {
         return true;
       }
 
