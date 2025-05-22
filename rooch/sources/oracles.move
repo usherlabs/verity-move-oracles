@@ -13,17 +13,23 @@ module verity::oracles {
     use moveos_std::signer;
     use moveos_std::account;
     use moveos_std::address;
+    use moveos_std::hash;
     use moveos_std::object::{Self, ObjectID, Object};
     use moveos_std::simple_map::{Self, SimpleMap};
     use moveos_std::table::{Self, Table};
+    use moveos_std::hex;
 
     use rooch_framework::coin::{Self, Coin};
     use rooch_framework::gas_coin::RGas;
     use rooch_framework::account_coin_store;
     use rooch_framework::coin_store::{Self, CoinStore};
+    use rooch_framework::ecdsa_k1;
+    use rooch_framework::ethereum_address::{Self,ETHAddress};
     use std::string::{Self, String};
     use std::option::{Self, Option};
     use std::vector;
+    use std::debug;
+
 
     #[test_only]
     use rooch_framework::genesis;
@@ -40,6 +46,10 @@ module verity::oracles {
     const NoBalanceError: u64 = 1009;
     const ZeroAmountError: u64 = 1010;
     const MinGasLimitError: u64 = 1011;
+    const NoResponseBodyFound: u64 = 1012;
+    const TLSVerificationFailed: u64 = 1012;
+
+
 
     /// Struct to represent HTTP request parameters
     /// Designed to be imported by third-party contracts
@@ -85,6 +95,18 @@ module verity::oracles {
         notification_gas_allocation: Table<String, Table<address, u256>>
     }
 
+    /// New global parameters with CKTLS validation
+    struct GlobalParamsV3 has key {
+        owner: address,
+        treasury: Object<CoinStore<RGas>>,
+        // Use Table instead of SimpleMap for better performance
+        balances: Table<address, u256>,
+        // Notification gas allocations using Table
+        notification_gas_allocation: Table<String, Table<address, u256>>,
+
+        ic_public_address: ETHAddress
+    }
+
     // -------- Events --------
     /// Event emitted when a new request is added
     struct RequestAdded has copy, drop {
@@ -113,6 +135,7 @@ module verity::oracles {
         init_v1();
         let module_signer = signer::module_signer<GlobalParams>();
         migrate_to_v2(&module_signer);
+        migrate_to_v3(&module_signer)
     }
 
     fun init_v1(){
@@ -189,6 +212,26 @@ module verity::oracles {
             notification_gas_allocation: new_notifications
         });
     }
+        /// Migration function to move from V1 to V2
+    public entry fun migrate_to_v3(account: &signer) {
+        // Unpack old params directly
+        let GlobalParamsV2 {
+            owner,
+            treasury,
+            balances,
+            notification_gas_allocation
+        } = account::move_resource_from<GlobalParamsV2>(@verity);
+        
+
+        // Create and move new GlobalParamsV2
+        account::move_resource_to(account, GlobalParamsV3 {
+            owner,
+            treasury,
+            balances,
+            notification_gas_allocation,
+            ic_public_address: ethereum_address::from_bytes(hex::decode(&b"ba12a284e29aeaaea28ff233118841950f353990"))
+        });
+    }
 
     /// Update notification gas allocation for a specific notify address and user
     public entry fun update_notification_gas_allocation(
@@ -198,7 +241,7 @@ module verity::oracles {
         amount: u256
     ) {
         assert!(amount==0 ||amount>500_000,MinGasLimitError);
-        let global_params = account::borrow_mut_resource<GlobalParamsV2>(@verity);
+        let global_params = account::borrow_mut_resource<GlobalParamsV3>(@verity);
         let sender = signer::address_of(from);
         let notification_endpoint= option::destroy_some(with_notify(notify_address,notify_function));
 
@@ -230,10 +273,21 @@ module verity::oracles {
         new_owner: address
     ) {
         let owner = tx_context::sender();
-        let params = account::borrow_mut_resource<GlobalParamsV2>(@verity);
+        let params = account::borrow_mut_resource<GlobalParamsV3>(@verity);
         assert!(params.owner == owner, OnlyOwnerError);
         params.owner = new_owner;
     }
+
+    /// Change the ic_public_address of the oracle system tls verification
+    public entry fun set_ic_public_address(
+        new_ic_public_address: String
+    ) {
+        let owner = tx_context::sender();
+        let params = account::borrow_mut_resource<GlobalParamsV3>(@verity);
+        assert!(params.owner == owner, OnlyOwnerError);
+        params.ic_public_address = ethereum_address::from_bytes(string::into_bytes(new_ic_public_address));
+    }
+
 
     /// Create a new HTTPRequest struct with the given parameters
     public fun build_request(
@@ -318,7 +372,7 @@ module verity::oracles {
         let min_amount = option::destroy_some(option_min_amount);
 
         assert!(sent_coin >= min_amount, NotEnoughGasError);
-        let global_param = account::borrow_mut_resource<GlobalParamsV2>(@verity);
+        let global_param = account::borrow_mut_resource<GlobalParamsV3>(@verity);
         coin_store::deposit(&mut global_param.treasury, payment);
         let request_account = tx_context::sender();
         return create_request(
@@ -368,7 +422,7 @@ module verity::oracles {
         let min_amount = option::destroy_some(option_min_amount);
 
         assert!(account_balance >= min_amount, NotEnoughGasError);
-        let global_params = account::borrow_mut_resource<GlobalParamsV2>(@verity);
+        let global_params = account::borrow_mut_resource<GlobalParamsV3>(@verity);
         let balance = table::borrow_mut(&mut global_params.balances, request_account);
         *balance = *balance - min_amount;
 
@@ -387,7 +441,7 @@ module verity::oracles {
         // Check that amount is not zero
         assert!(amount > 0, ZeroAmountError);
         
-        let global_params = account::borrow_mut_resource<GlobalParamsV2>(@verity);
+        let global_params = account::borrow_mut_resource<GlobalParamsV3>(@verity);
         let sender = signer::address_of(from);
         
         let deposit = account_coin_store::withdraw<RGas>(from, amount);
@@ -413,7 +467,7 @@ module verity::oracles {
         // Check that amount is not zero
         assert!(amount > 0, ZeroAmountError);
         
-        let global_params = account::borrow_mut_resource<GlobalParamsV2>(@verity);
+        let global_params = account::borrow_mut_resource<GlobalParamsV3>(@verity);
         let sender = signer::address_of(from);
         
         // Check if user has a balance
@@ -475,7 +529,7 @@ module verity::oracles {
         let fulfillment_cost = option::destroy_some(option_fulfillment_cost);
 
         // send token to orchestrator wallet
-        let global_params = account::borrow_mut_resource<GlobalParamsV2>(@verity);
+        let global_params = account::borrow_mut_resource<GlobalParamsV3>(@verity);
         let payment = coin_store::withdraw(&mut global_params.treasury, fulfillment_cost);
 
         account_coin_store::deposit(caller_address, payment);
@@ -504,10 +558,25 @@ module verity::oracles {
         });
     }
 
+        /// Fulfill an oracle request with response data
+    /// Only callable by the designated oracle
+    public entry fun fulfil_request_with_tls_verification(
+        caller: &signer,
+        id: ObjectID,
+        response_status: u16,
+        proof: String,
+        signature: String,
+        keeper: address,
+    ) {
+        assert!(check_proof_signature_validity(proof,signature),TLSVerificationFailed);
+        let result = extract_body(proof);
+        fulfil_request(caller,id,response_status,result,keeper)
+    }
+
     // // This is a Version 0 of the verifier.
     // public fun verify(
     //     data: String,
-    //     proof: String
+    //     proof: d
     // ): bool {
     //     // * Eventually this will be replaced with ECDSA signature verification of public key from MPC verifier network.
     //     true
@@ -570,7 +639,7 @@ module verity::oracles {
 
     #[view]
     public fun get_user_balance(user: address): u256 {
-        let global_params = account::borrow_resource<GlobalParamsV2>(@verity);
+        let global_params = account::borrow_resource<GlobalParamsV3>(@verity);
         if (table::contains(&global_params.balances, user)) {
             *table::borrow(&global_params.balances, user)
         } else {
@@ -595,7 +664,7 @@ module verity::oracles {
         notification_endpoint : String,
         user: address
     ): u256 {
-        let global_params = account::borrow_resource<GlobalParamsV2>(@verity);
+        let global_params = account::borrow_resource<GlobalParamsV3>(@verity);
 
         if (!table::contains(&global_params.notification_gas_allocation, notification_endpoint)) {
             return 0
@@ -608,16 +677,133 @@ module verity::oracles {
             0
         }
     }
+
+    fun normalize_signature(sig: vector<u8>): vector<u8> {
+
+        let len = vector::length(&sig);
+        assert!(len == 65, 1);
+
+        let v = vector::pop_back(&mut sig);
+        let rec_id = if (v > 27) { v - 27 } else { v };
+        vector::push_back(&mut sig, rec_id);
+        sig
+    }
+
+    /// Split a string by a delimiter
+    fun split(s: &String, delimiter: &String): vector<String> {
+        let result = vector::empty<String>();
+        let start = 0;
+        let len = string::length(s);
+        
+        while (start <= len) {
+            let pos = if (start == len) {
+                len
+            } else {
+                let sub = string::sub_string(s, start, len);
+                let idx = string::index_of(&sub, delimiter);
+                if (idx == string::length(&sub)) {
+                    len
+                } else {
+                    start + idx
+                }
+            };
+            
+            if (pos >= start) {
+                let part = string::sub_string(s, start, pos);
+                vector::push_back(&mut result, part);
+            };
+            
+            if (pos == len) break;
+            start = pos + string::length(delimiter);
+        };
+        result
+    }
+
+    #[view]
+    public fun extract_body(data: String): String{
+        let all_split=split(&data,&string::utf8(b"\r\n\r\n"));
+
+        let body = string::utf8(b"");
+        let len = vector::length(&all_split);
+        assert!(len>2, NoResponseBodyFound);
+        let start = 0;
+        while (start <= len) {
+            body = vector::pop_back(&mut all_split);
+            if (string::length(&body)==0){
+                start=start+1;
+            }else {
+                break
+            };
+            if (start == len) break;
+        };
+
+        let res_header = vector::pop_back(&mut all_split);
+
+        if(string::index_of(&res_header, &string::utf8(b"application/json")) != string::length(&res_header)){
+            let ends_at= string::index_of(&body, &string::utf8(b"}\r\n"));
+            let start_at= string::index_of(&body, &string::utf8(b"{"));
+            debug::print(&string::sub_string(&body,start_at,ends_at));
+            return string::sub_string(&body,start_at,ends_at)
+        }else{
+            return body
+        }
+    }
+
+
+
+    #[view]
+    public fun check_proof_signature_validity( proof: String,signature: String):bool{
+        let _prefix = b"\x19Ethereum Signed Message:\n";
+        let message =   hex::encode(hash::sha2_256(string::into_bytes(proof)));
+        vector::append(&mut _prefix, u64_to_string(vector::length(&message)));
+        vector::append(&mut _prefix, message);
+
+        let _signature=hex::decode(&string::into_bytes(signature));
+        let pk = ecdsa_k1::ecrecover(&normalize_signature(_signature), &_prefix, ecdsa_k1::keccak256());
+        let pk = ethereum_address::new(pk);
+        let _address = ethereum_address::into_bytes(pk);
+
+
+        let global_params = account::borrow_resource<GlobalParamsV3>(@verity);
+        global_params.ic_public_address == pk
+
+    }
+
+    #[view]
+    fun u64_to_string(n: u64): vector<u8> {
+      let  digits = vector::empty<u8>();
+
+      // Special case for zero
+      if (n == 0) {
+        // ASCII '0' is 48
+        vector::push_back(&mut digits, 48);
+        digits
+      }else{
+        // Extract digits in reverse order
+        while (n > 0) {
+            vector::push_back(&mut digits, ((n % 10) as u8) + 48);
+            n = n / 10;
+        };
+
+        // Reverse to get the correct order
+        vector::reverse(&mut digits);
+        digits
+        }
+    }
+
+   
 }
 
 #[test_only]
 module verity::test_oracles {
     use std::string;
     use moveos_std::signer;
-    // use std::option;
+    use std::debug;
     use verity::oracles;
     use moveos_std::object::ObjectID;
     use rooch_framework::gas_coin;
+
+
 
     struct Test has key {
     }
@@ -781,6 +967,25 @@ module verity::test_oracles {
 
         assert!(oracles::get_notification_gas_allocation(sender, notify_address1, sender) == new_amount1, 99966);
         assert!(oracles::get_notification_gas_allocation(sender, notify_address2, sender) == new_amount2, 99967);
+    }
+
+    #[test]
+    public fun test_compute_merkle_root_from_proof() {
+        // Test function to fulfill a request  
+        oracles::init_for_test();
+        let proof = string::utf8(b"GET https://api.x.com/2/tweets?ids=1915138091142033501&tweet.fields=created_at,public_metrics&expansions=author_id&user.fields=created_at HTTP/1.1\r\nhost: api.x.com\r\naccept: */*\r\ncache-control: no-cache\r\nconnection: close\r\naccept-encoding: identity\r\nauthorization: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\n\r\n\n\nHTTP/1.1 200 OK\r\nDate: Wed, 23 Apr 2025 20:23:02 GMT\r\nContent-Type: application/json; charset=utf-8\r\nTransfer-Encoding: chunked\r\nConnection: close\r\nperf: 7402827104\r\nSet-Cookie: guest_id=v1%3A174543978261073637; Max-Age=34214400; Expires=Sun, 24 May 2026 20:23:02 GMT; Path=/; Domain=.x.com; Secure; SameSite=None\r\napi-version: 2.135\r\nCache-Control: no-cache, no-store, max-age=0\r\nx-access-level: read\r\nx-frame-options: SAMEORIGIN\r\nx-transaction-id: e89a9445df246a19\r\nx-xss-protection: 0\r\nx-rate-limit-limit: 15\r\nx-rate-limit-reset: 1745440262\r\ncontent-disposition: attachment; filename=json.json\r\nx-content-type-options: nosniff\r\nx-rate-limit-remaining: 12\r\nstrict-transport-security: max-age=631138519\r\nx-response-time: 47\r\nx-connection-hash: a9cd202325d14145aa91c16210abf78a1f099bc3f5b65c95b195ecd472e4eb1a\r\ncf-cache-status: DYNAMIC\r\nvary: accept-encoding\r\nSet-Cookie: __cf_bm=9wAVlwyQO1TTmsKP8MiY29Py.CkyhCtnbdlPACOQo4s-1745439782-1.0.1.1-SeBSXQQXJ6q3WcwNAUaCu5eCnppfAKlB.JMVZVYKOSsayUGx60QaptaKma1NW6K7HTTC_4IS3EGUV1dvYSh8CQsOovCvMFznWuXPslRWxw8; path=/; expires=Wed, 23-Apr-25 20:53:02 GMT; domain=.x.com; HttpOnly; Secure\r\nServer: cloudflare tsa_p\r\nCF-RAY: 935013912dda764c-SEA\r\n\r\n1bb\r\n{\"data\":[{\"text\":\"Test 23/04/2025\",\"author_id\":\"859712682181746688\",\"public_metrics\":{\"retweet_count\":0,\"reply_count\":0,\"like_count\":0,\"quote_count\":0,\"bookmark_count\":0,\"impression_count\":2},\"created_at\":\"2025-04-23T20:17:57.000Z\",\"edit_history_tweet_ids\":[\"1915138091142033501\"],\"id\":\"1915138091142033501\"}],\"includes\":{\"users\":[{\"id\":\"859712682181746688\",\"username\":\"xlassix\",\"created_at\":\"2017-05-03T10:14:10.000Z\",\"name\":\"Xlassix.eth\"}]}}\r\n0\r\n\r\n");
+        let signature = string::utf8(b"5bfcd462623d7ab64665cfa71a36e3350378eb6959759244df1de83a06bab214450edb1cc77729e07ee1877ab8d4868e40812059b8e3bf1facd07d335d7d80351c");
+        let signature2 = string::utf8(b"3542c6f79d33c0ddf980cfef4216bbd40291c3dae4b998864c844e6b41736ada0810be8315b9e28828413728c19b05674aafdb1561839c4f97d4a641c13219991c");
+        let proof2 = string::utf8(b"GET https://api.x.com/2/tweets?ids=1583095539742408706&tweet.fields=created_at,public_metrics&expansions=author_id&user.fields=created_at HTTP/1.1\r\nhost: api.x.com\r\naccept: */*\r\ncache-control: no-cache\r\nconnection: close\r\naccept-encoding: identity\r\nauthorization: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\n\r\n\n\nHTTP/1.1 200 OK\r\nDate: Thu, 10 Apr 2025 08:09:13 GMT\r\nContent-Type: application/json; charset=utf-8\r\nTransfer-Encoding: chunked\r\nConnection: close\r\nperf: 7402827104\r\nSet-Cookie: guest_id_marketing=v1%3A174427255351633530; Max-Age=63072000; Expires=Sat, 10 Apr 2027 08:09:13 GMT; Path=/; Domain=.x.com; Secure; SameSite=None\r\napi-version: 2.133\r\nCache-Control: no-cache, no-store, max-age=0\r\nx-access-level: read\r\nx-frame-options: SAMEORIGIN\r\nx-transaction-id: ae74f6476b34881c\r\nx-xss-protection: 0\r\nx-rate-limit-limit: 15\r\nx-rate-limit-reset: 1744273020\r\ncontent-disposition: attachment; filename=json.json\r\nx-content-type-options: nosniff\r\nx-rate-limit-remaining: 12\r\nstrict-transport-security: max-age=631138519\r\nx-response-time: 38\r\nx-connection-hash: e1811c1af4a712f8b8f060cf83c9f3c52b760a83e1aa1322aec4d46c9d5a3d8a\r\nvary: accept-encoding\r\ncf-cache-status: DYNAMIC\r\nSet-Cookie: guest_id_ads=v1%3A174427255351633530; Max-Age=63072000; Expires=Sat, 10 Apr 2027 08:09:13 GMT; Path=/; Domain=.x.com; Secure; SameSite=None\r\nSet-Cookie: personalization_id=\"v1_g8oXK5WldT1cRKOnjUexkg==\"; Max-Age=63072000; Expires=Sat, 10 Apr 2027 08:09:13 GMT; Path=/; Domain=.x.com; Secure; SameSite=None\r\nSet-Cookie: guest_id=v1%3A174427255351633530; Max-Age=63072000; Expires=Sat, 10 Apr 2027 08:09:13 GMT; Path=/; Domain=.x.com; Secure; SameSite=None\r\nSet-Cookie: __cf_bm=aYHa3DJx6kIzxTz7IELrbFQBNKBL_5Iofd9W3AbYtno-1744272553-1.0.1.1-Zzj.yPyAK31VMOcg4ptXdkjlVf3gphX9d8lmQ1iKKqrYwyxw4YcCCw5uOPNO.Lm6z0iRWql437G2IO.hu8dl5MZk.4QNyoj8LrXtRdGAOh0; path=/; expires=Thu, 10-Apr-25 08:39:13 GMT; domain=.x.com; HttpOnly; Secure\r\nServer: cloudflare tsa_b\r\nCF-RAY: 92e0c2c31f50e3cd-LIS\r\n\r\n206\r\n{\"data\":[{\"id\":\"1583095539742408706\",\"text\":\"The cure to a  weak mind: \\nPush yourself when you are least motivated \\n\\n- David Goggins\",\"edit_history_tweet_ids\":[\"1583095539742408706\"],\"created_at\":\"2022-10-20T13:59:23.000Z\",\"author_id\":\"859712682181746688\",\"public_metrics\":{\"retweet_count\":0,\"reply_count\":0,\"like_count\":1,\"quote_count\":0,\"bookmark_count\":0,\"impression_count\":0}}],\"includes\":{\"users\":[{\"created_at\":\"2017-05-03T10:14:10.000Z\",\"name\":\"Xlassix.eth\",\"username\":\"xlassix\",\"id\":\"859712682181746688\"}]}}\r\n0\r\n\r\n");
+
+        debug::print(&oracles::check_proof_signature_validity(proof,signature));
+        debug::print(&oracles::check_proof_signature_validity(proof2,signature2));
+
+        debug::print(&oracles::extract_body(proof2));
+
+        assert!(oracles::check_proof_signature_validity(proof,signature),2999);
+        assert!(!oracles::check_proof_signature_validity(proof2,signature2),2999);
+
     }
 
 }
