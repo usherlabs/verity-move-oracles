@@ -259,7 +259,7 @@ export default class RoochIndexer extends Indexer {
     data: ProcessedRequestAdded<any>,
     status: number,
     result: string,
-    proof_generated?: boolean,
+    proof_generated?: string,
     signature?: string,
   ) {
     const view = await this.client.executeViewFunction({
@@ -287,15 +287,17 @@ export default class RoochIndexer extends Indexer {
       update: {},
     });
 
+    log.debug({ proof_generated, result, signature });
+
     const tx = new Transaction();
-    if (proof_generated && signature) {
+    if (proof_generated) {
       tx.callFunction({
         target: `${this.oracleAddress}::oracles::fulfil_request_with_tls_verification`,
         args: [
           Args.objectId(data.request_id),
           Args.u16(status),
-          Args.string(result),
-          Args.string(signature),
+          Args.string(proof_generated ?? ""),
+          Args.string(signature ?? ""),
           Args.address(Secp256k1Keypair.fromSecretKey(keeper_key.privateKey).getRoochAddress().toHexAddress()),
         ],
       });

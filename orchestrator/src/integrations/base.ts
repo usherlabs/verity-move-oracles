@@ -45,7 +45,7 @@ export abstract class BasicBearerAPIHandler {
 
   async submitRequest(
     data: ProcessedRequestAdded<any>,
-  ): Promise<{ status: number; message: string; proof_generated?: boolean; signature?: string }> {
+  ): Promise<{ status: number; message: string; proof_generated?: string; signature?: string }> {
     try {
       const currentTime = Date.now();
       const timeSinceLastExecution = currentTime - this.last_executed;
@@ -122,8 +122,8 @@ export abstract class BasicBearerAPIHandler {
           return {
             status: request.status,
             // biome-ignore lint/complexity/useLiteralKeys: IC Object
-            message: proof_verification["Ok"]["results"][0]["FullProof"],
-            proof_generated: true,
+            proof_generated: proof_verification["Ok"]["results"][0]["FullProof"],
+            message: request.data,
             // biome-ignore lint/complexity/useLiteralKeys: IC Object
             signature: proof_verification["Ok"]["signature"],
           };
