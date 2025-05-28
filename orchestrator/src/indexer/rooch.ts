@@ -255,7 +255,13 @@ export default class RoochIndexer extends Indexer {
    * @param {string} result - The result of the fulfillment.
    * @returns {Promise<any>} - The receipt of the transaction.
    */
-  async sendFulfillment(data: ProcessedRequestAdded<any>, status: number, result: string) {
+  async sendFulfillment(
+    data: ProcessedRequestAdded<any>,
+    status: number,
+    result: string,
+    proof_generated?: boolean,
+    signature?: string,
+  ) {
     const view = await this.client.executeViewFunction({
       target: `${this.oracleAddress}::oracles::get_response_status`,
       args: [Args.objectId(data.request_id)],
@@ -282,15 +288,28 @@ export default class RoochIndexer extends Indexer {
     });
 
     const tx = new Transaction();
-    tx.callFunction({
-      target: `${this.oracleAddress}::oracles::fulfil_request`,
-      args: [
-        Args.objectId(data.request_id),
-        Args.u16(status),
-        Args.string(result),
-        Args.address(Secp256k1Keypair.fromSecretKey(keeper_key.privateKey).getRoochAddress().toHexAddress()),
-      ],
-    });
+    if (proof_generated && signature) {
+      tx.callFunction({
+        target: `${this.oracleAddress}::oracles::fulfil_request_with_tls_verification`,
+        args: [
+          Args.objectId(data.request_id),
+          Args.u16(status),
+          Args.string(result),
+          Args.string(signature),
+          Args.address(Secp256k1Keypair.fromSecretKey(keeper_key.privateKey).getRoochAddress().toHexAddress()),
+        ],
+      });
+    } else {
+      tx.callFunction({
+        target: `${this.oracleAddress}::oracles::fulfil_request`,
+        args: [
+          Args.objectId(data.request_id),
+          Args.u16(status),
+          Args.string(result),
+          Args.address(Secp256k1Keypair.fromSecretKey(keeper_key.privateKey).getRoochAddress().toHexAddress()),
+        ],
+      });
+    }
 
     tx.setMaxGas(1000000000);
 

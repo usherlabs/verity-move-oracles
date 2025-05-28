@@ -83,6 +83,7 @@ describe(".env Check", () => {
         ROOCH_ORACLE_ADDRESS: "0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6c",
         ROOCH_PRIVATE_KEY: "0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6c",
         X_BEARER_TOKEN: "token",
+        VERITY_PROVER_URL: "http://localhost:8080",
       },
       wantErr: false,
       errorMessage: '"roochPrivateKey" is not allowed to be empty',
@@ -91,6 +92,10 @@ describe(".env Check", () => {
       name: "rooch variables not required when preferred chain is set to APTOS ",
       data: {
         CHAINS: "APTOS",
+        APTOS_ORACLE_ADDRESS: "0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6c",
+        APTOS_INDEXER_CRON: "0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6c",
+        APTOS_PRIVATE_KEY: "0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6c",
+        APTOS_NODIT_KEY: "0xf81628c3bf85c3fc628f29a3739365d4428101fbbecca0dcc7e3851f34faea6c",
       },
       wantErr: false,
       errorMessage: "",

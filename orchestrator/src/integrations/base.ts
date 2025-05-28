@@ -1,9 +1,13 @@
+import env from "@/env";
 import { log } from "@/logger";
+import verify_proof from "@/tls_proof";
 import type { ProcessedRequestAdded } from "@/types";
 import { isValidJson } from "@/util";
-import axios, { type AxiosResponse } from "axios";
+import { VerityClient, type VerityResponse } from "@usherlabs/verity-client";
+import axios from "axios";
 import jsonata from "jsonata";
 import prismaClient from "prisma";
+
 export abstract class BasicBearerAPIHandler {
   protected last_executed = 0;
 
@@ -39,7 +43,9 @@ export abstract class BasicBearerAPIHandler {
 
   abstract validatePayload(path: string, payload: string | null): boolean;
 
-  async submitRequest(data: ProcessedRequestAdded<any>): Promise<{ status: number; message: string }> {
+  async submitRequest(
+    data: ProcessedRequestAdded<any>,
+  ): Promise<{ status: number; message: string; proof_generated?: boolean; signature?: string }> {
     try {
       const currentTime = Date.now();
       const timeSinceLastExecution = currentTime - this.last_executed;
@@ -66,41 +72,64 @@ export abstract class BasicBearerAPIHandler {
       }
 
       const token = this.getAccessToken();
-      let request: AxiosResponse<any, any>;
+
+      log.debug("processing request:", token);
+      let request: VerityResponse<any>;
+      const client = new VerityClient({
+        prover_url: env.proof.verityProverUrl,
+      });
+
       if (isValidJson(data.params.headers) && isValidJson(data.params.body)) {
-        // TODO: Replace direct requests via axios with requests via VerityClient TS module
-        request = await axios({
-          method: data.params.method,
-          data: JSON.parse(data.params.body),
-          url: url,
-          headers: {
-            ...JSON.parse(data.params.headers),
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        // return { status: request.status, message: request.data };
+        request = await client
+          .post(url, {
+            method: data.params.method, // this overwrite's the get if its post
+            data: JSON.parse(data.params.body),
+            headers: {
+              ...JSON.parse(data.params.headers),
+              Authorization: `Bearer ${token}`,
+            },
+          })
+          .redact("req:header:authorization");
       } else {
-        request = await axios({
-          method: data.params.method,
-          data: data.params.body,
-          url: url,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        request = await client
+          .get(url, {
+            method: data.params.method,
+            data: data.params.body,
+            url: url,
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+          .redact("req:header:authorization");
       }
 
-      try {
-        // const result = (await jqRun(data.pick, JSON.stringify(request.data), { input: "string" })) as string;
-        const expression = jsonata(
-          data.pick === "." ? "*" : data.pick.startsWith(".") ? data.pick.replace(".", "") : data.pick,
-        );
-        const result =
-          data.pick === "." ? JSON.stringify(request.data) : JSON.stringify(await expression.evaluate(request.data));
-        log.info({ status: request.status, message: result });
-        return { status: request.status, message: result };
-      } catch {
-        return { status: 409, message: "`Pick` value provided could not be resolved on the returned response" };
+      if (!request.proof) {
+        try {
+          // const result = (await jqRun(data.pick, JSON.stringify(request.data), { input: "string" })) as string;
+          const expression = jsonata(
+            data.pick === "." ? "*" : data.pick.startsWith(".") ? data.pick.replace(".", "") : data.pick,
+          );
+          const result =
+            data.pick === "." ? JSON.stringify(request.data) : JSON.stringify(await expression.evaluate(request.data));
+          log.info({ status: request.status, message: result });
+          return { status: request.status, message: result };
+        } catch {
+          return { status: 409, message: "`Pick` value provided could not be resolved on the returned response" };
+        }
+      } else {
+        try {
+          const proof_verification = (await verify_proof(request.proof ?? "", request.notary_pub_key ?? "")) as any;
+          return {
+            status: request.status,
+            // biome-ignore lint/complexity/useLiteralKeys: IC Object
+            message: proof_verification["Ok"]["results"][0]["FullProof"],
+            proof_generated: true,
+            // biome-ignore lint/complexity/useLiteralKeys: IC Object
+            signature: proof_verification["Ok"]["signature"],
+          };
+        } catch {
+          return { status: 409, message: "Proof verification failed" };
+        }
       }
       // return { status: request.status, message: result };
     } catch (error: any) {

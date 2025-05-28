@@ -80,7 +80,7 @@ export abstract class Indexer {
    */
   async processRequestAddedEvent<T>(
     data: ProcessedRequestAdded<T>,
-  ): Promise<{ status: number; message: string } | null> {
+  ): Promise<{ status: number; message: string; proof_generated?: boolean; signature?: string } | null> {
     log.debug("processing request:", data.request_id);
 
     if (data.oracle.toLowerCase() !== this.getOrchestratorAddress().toLowerCase()) {

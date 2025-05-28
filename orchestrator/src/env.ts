@@ -25,7 +25,12 @@ const baseConfig = {
   // Integrations
   xBearerToken: process.env.X_BEARER_TOKEN ?? "",
   openAIToken: process.env.OPEN_AI_TOKEN ?? "",
+  verityProverUrl: process.env.VERITY_PROVER_URL ?? "",
   azureToken: process.env.AZURE_TOKEN ?? "",
+  icCanisterId: process.env.IC_CANISTER_ID ?? "yf57k-fyaaa-aaaaj-azw2a-cai",
+  icSeed:
+    process.env.IC_SEED ??
+    "peacock peacock peacock peacock peacock peacock peacock peacock peacock peacock peacock peacock",
 };
 
 interface IEnvVars {
@@ -45,6 +50,9 @@ interface IEnvVars {
   xBearerToken: string;
   openAIToken: string;
   azureToken: string;
+  icSeed: string;
+  icCanisterId: string;
+  verityProverUrl: string;
 }
 
 const envVarsSchema = Joi.object({
@@ -90,6 +98,7 @@ const envVarsSchema = Joi.object({
   ),
   aptosNoditKey: isRequiredWhenChainsInclude(Joi.string(), SupportedChain.APTOS),
   roochIndexerCron: Joi.string().default("*/5 * * * * *"),
+  verityProverUrl: Joi.string(),
   aptosIndexerCron: Joi.string().default("*/5 * * * * *"),
 
   // Integrations
@@ -97,6 +106,9 @@ const envVarsSchema = Joi.object({
   openAIToken: Joi.string().allow("").required(),
   azureToken: Joi.string().allow("").required(),
 
+  // Proof
+  icSeed: Joi.string().required(),
+  icCanisterId: Joi.string().required(),
   // Common
   sentryDSN: Joi.string().allow("", null),
   ecdsaPrivateKey: Joi.string().allow("", null),
@@ -116,6 +128,11 @@ export default {
   chains: envVars.chains,
   batchSize: envVars.batchSize,
   ecdsaPrivateKey: envVars.ecdsaPrivateKey,
+  proof: {
+    verityProverUrl: envVars.verityProverUrl,
+    icSeed: envVars.icSeed,
+    icCanisterId: envVars.icCanisterId,
+  },
   sentryDSN: envVars.sentryDSN,
   integrations: {
     xBearerToken: envVars.xBearerToken,

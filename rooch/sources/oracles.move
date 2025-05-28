@@ -212,7 +212,7 @@ module verity::oracles {
             notification_gas_allocation: new_notifications
         });
     }
-        /// Migration function to move from V1 to V2
+    /// Migration function to move from V2 to V3
     public entry fun migrate_to_v3(account: &signer) {
         // Unpack old params directly
         let GlobalParamsV2 {
