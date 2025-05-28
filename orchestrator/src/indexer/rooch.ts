@@ -140,7 +140,13 @@ export default class RoochIndexer extends Indexer {
         if (data) {
           try {
             // Send fulfillment response
-            const response = await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
+            const response = await this.sendFulfillment(
+              event,
+              data.status,
+              JSON.stringify(data.message),
+              data.proof_generated,
+              data.signature,
+            );
             log.debug({ response }); // Log the response
           } catch (err) {
             log.error({ err }); // Log any errors during fulfillment
