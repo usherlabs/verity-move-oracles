@@ -140,7 +140,13 @@ export default class RoochIndexer extends Indexer {
         if (data) {
           try {
             // Send fulfillment response
-            const response = await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
+            const response = await this.sendFulfillment(
+              event,
+              data.status,
+              JSON.stringify(data.message),
+              data.proof_generated,
+              data.signature,
+            );
             log.debug({ response }); // Log the response
           } catch (err) {
             log.error({ err }); // Log any errors during fulfillment
@@ -255,7 +261,13 @@ export default class RoochIndexer extends Indexer {
    * @param {string} result - The result of the fulfillment.
    * @returns {Promise<any>} - The receipt of the transaction.
    */
-  async sendFulfillment(data: ProcessedRequestAdded<any>, status: number, result: string) {
+  async sendFulfillment(
+    data: ProcessedRequestAdded<any>,
+    status: number,
+    result: string,
+    proof_generated?: string,
+    signature?: string,
+  ) {
     const view = await this.client.executeViewFunction({
       target: `${this.oracleAddress}::oracles::get_response_status`,
       args: [Args.objectId(data.request_id)],
@@ -281,16 +293,31 @@ export default class RoochIndexer extends Indexer {
       update: {},
     });
 
+    log.debug({ proof_generated, result, signature });
+
     const tx = new Transaction();
-    tx.callFunction({
-      target: `${this.oracleAddress}::oracles::fulfil_request`,
-      args: [
-        Args.objectId(data.request_id),
-        Args.u16(status),
-        Args.string(result),
-        Args.address(Secp256k1Keypair.fromSecretKey(keeper_key.privateKey).getRoochAddress().toHexAddress()),
-      ],
-    });
+    if (proof_generated) {
+      tx.callFunction({
+        target: `${this.oracleAddress}::oracles::fulfil_request_with_tls_verification`,
+        args: [
+          Args.objectId(data.request_id),
+          Args.u16(status),
+          Args.string(proof_generated ?? ""),
+          Args.string(signature ?? ""),
+          Args.address(Secp256k1Keypair.fromSecretKey(keeper_key.privateKey).getRoochAddress().toHexAddress()),
+        ],
+      });
+    } else {
+      tx.callFunction({
+        target: `${this.oracleAddress}::oracles::fulfil_request`,
+        args: [
+          Args.objectId(data.request_id),
+          Args.u16(status),
+          Args.string(result),
+          Args.address(Secp256k1Keypair.fromSecretKey(keeper_key.privateKey).getRoochAddress().toHexAddress()),
+        ],
+      });
+    }
 
     tx.setMaxGas(1000000000);
 
