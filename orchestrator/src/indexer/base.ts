@@ -30,7 +30,13 @@ export abstract class Indexer {
    * @param {string} result - The result of the fulfillment.
    * @returns {Promise<any>} - The receipt of the transaction.
    */
-  abstract sendFulfillment<T>(data: ProcessedRequestAdded<T>, status: number, result: string): void;
+  abstract sendFulfillment<T>(
+    data: ProcessedRequestAdded<T>,
+    status: number,
+    result: string,
+    proof_generated?: string,
+    signature?: string,
+  ): void;
 
   // Abstract: Implementation to get chain identifier. its usually a concat between blockchain and network e.g ("ROOCH-testnet","APTOS-mainnet")
   abstract getChainId(): string;
@@ -80,7 +86,7 @@ export abstract class Indexer {
    */
   async processRequestAddedEvent<T>(
     data: ProcessedRequestAdded<T>,
-  ): Promise<{ status: number; message: string } | null> {
+  ): Promise<{ status: number; message: string; proof_generated?: string; signature?: string } | null> {
     log.debug("processing request:", data.request_id);
 
     if (data.oracle.toLowerCase() !== this.getOrchestratorAddress().toLowerCase()) {
@@ -132,7 +138,13 @@ export abstract class Indexer {
 
           if (data) {
             try {
-              await this.sendFulfillment(event, data.status, JSON.stringify(data.message));
+              await this.sendFulfillment(
+                event,
+                data.status,
+                JSON.stringify(data.message),
+                data.proof_generated,
+                data.signature,
+              );
               await this.save(event, data, RequestStatus.SUCCESS);
             } catch (err: any) {
               log.error({ err: err.message });
