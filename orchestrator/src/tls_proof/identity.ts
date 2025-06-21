@@ -37,7 +37,7 @@ export const createActor = async (
   });
 };
 
-export const verifyVerifier = async () => {
+export const verityVerifier = async () => {
   return await createActor(env.proof.icCanisterId, {
     agentOptions: {
       host: "https://icp0.io",
