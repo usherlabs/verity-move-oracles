@@ -126,12 +126,11 @@ temp*
 
 # else
 .script
+deno.lock
 
 # Prisma
-prisma/.db
-prisma/.db*
-orchestrator/prisma/.db
-orchestrator/prisma/.db*
+orchestrator/prisma-dev/*.db
+orchestrator/prisma-dev/*.db*
 .infisical.json
 .aptos
 migration_lock.toml
