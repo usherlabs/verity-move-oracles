@@ -135,3 +135,6 @@ orchestrator/prisma/.db*
 .infisical.json
 .aptos
 migration_lock.toml
+
+# Keys and sensitive data
+keys/
